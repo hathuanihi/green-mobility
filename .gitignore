@@ -1,0 +1,57 @@
+# Operating System
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.fleet/
+
+# Java & Spring Boot (Backend)
+backend/target/
+backend/.mvn/
+backend/mvnw
+backend/mvnw.cmd
+*.class
+*.jar
+*.war
+
+# Node.js & Next.js (Admin Portal)
+node_modules/
+frontend-admin/node_modules/
+frontend-admin/.next/
+frontend-admin/out/
+frontend-admin/build/
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Flutter & Dart (Mobile Apps)
+mobile/**/.dart_tool/
+mobile/**/.flutter-plugins
+mobile/**/.flutter-plugins-dependencies
+mobile/**/.packages
+mobile/**/.pub-cache/
+mobile/**/.pub/
+mobile/**/build/
+mobile/**/android/.gradle/
+mobile/**/android/local.properties
+mobile/**/ios/Pods/
+mobile/**/ios/.symlinks/
+mobile/**/ios/Flutter/Flutter.framework
+mobile/**/ios/Flutter/Flutter.podspec
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Docker local volumes
+data/

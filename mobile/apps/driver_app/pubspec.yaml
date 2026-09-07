@@ -1,0 +1,30 @@
+name: driver_app
+description: Green Mobility Driver Mobile Application
+version: 1.0.0+1
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_bloc: ^8.1.6
+  camera: ^0.10.5+9
+  core_model:
+    path: ../../packages/core_model
+  core_network:
+    path: ../../packages/core_network
+  core_ui:
+    path: ../../packages/core_ui
+  core_map:
+    path: ../../packages/core_map
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lints: ^3.0.0
+
+flutter:
+  uses-material-design: true

@@ -1,0 +1,80 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api/v1
+
+spring:
+  application:
+    name: green-mobility-backend
+
+  # PostgreSQL + PostGIS DataSource
+  datasource:
+    url: jdbc:postgresql://localhost:5432/greenmobility_db
+    username: green_admin
+    password: green_password_2026
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 1800000
+
+  # JPA & Hibernate Spatial
+  jpa:
+    database-platform: org.hibernate.spatial.dialect.postgis.PostgisPG95Dialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          batch_size: 25
+
+  # Flyway Database Migrations
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  # Redis Configuration
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
+
+    # MongoDB Telemetry Configuration
+    mongodb:
+      uri: mongodb://mongo_admin:mongo_password_2026@localhost:27017/greenmobility_telemetry?authSource=admin
+
+  # RabbitMQ Configuration
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: rabbit_admin
+    password: rabbit_password_2026
+    listener:
+      simple:
+        concurrency: 3
+        max-concurrency: 10
+        prefetch: 1
+
+# Security & JWT Properties
+security:
+  jwt:
+    secret-key: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+    expiration-seconds: 86400 # 24h
+    refresh-expiration-seconds: 604800 # 7 days
+
+# Green Mobility Business Properties
+green-mobility:
+  matching:
+    tier1-radius-km: 1.5
+    tier2-radius-km: 3.0
+    tier3-radius-km: 5.0
+    driver-response-timeout-seconds: 15
+  carbon:
+    default-grid-emission-factor-gco2-kwh: 722.1
+    tree-absorption-daily-kg: 0.06
+    led-bulb-consumption-hourly-gco2: 7.221
