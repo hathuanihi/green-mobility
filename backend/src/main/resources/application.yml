@@ -1,7 +1,7 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
   servlet:
-    context-path: /api/v1
+    context-path: ${CONTEXT_PATH:/api/v1}
 
 spring:
   application:
@@ -9,9 +9,9 @@ spring:
 
   # PostgreSQL + PostGIS DataSource
   datasource:
-    url: jdbc:postgresql://localhost:5432/greenmobility_db
-    username: green_admin
-    password: green_password_2026
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:greenmobility_db}
+    username: ${DB_USER:green_admin}
+    password: ${DB_PASSWORD:green_password_2026}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
@@ -40,20 +40,20 @@ spring:
   # Redis Configuration
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
       timeout: 2000ms
 
     # MongoDB Telemetry Configuration
     mongodb:
-      uri: mongodb://mongo_admin:mongo_password_2026@localhost:27017/greenmobility_telemetry?authSource=admin
+      uri: ${MONGO_URI:mongodb://${DB_USER:mongo_admin}:${DB_PASSWORD:mongo_password_2026}@${MONGO_HOST:localhost}:${MONGO_PORT:27017}/${MONGO_DB:greenmobility_telemetry}?authSource=admin}
 
   # RabbitMQ Configuration
   rabbitmq:
-    host: localhost
-    port: 5672
-    username: rabbit_admin
-    password: rabbit_password_2026
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:rabbit_admin}
+    password: ${RABBITMQ_PASSWORD:rabbit_password_2026}
     listener:
       simple:
         concurrency: 3
@@ -63,9 +63,21 @@ spring:
 # Security & JWT Properties
 security:
   jwt:
-    secret-key: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
-    expiration-seconds: 86400 # 24h
-    refresh-expiration-seconds: 604800 # 7 days
+    secret-key: ${JWT_SECRET_KEY}
+    expiration-seconds: ${JWT_EXPIRATION_SECONDS:86400}
+    refresh-expiration-seconds: ${JWT_REFRESH_EXPIRATION_SECONDS:604800}
+
+# Springdoc OpenAPI (Swagger UI) Configuration
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operations-sorter: method
+    tags-sorter: alpha
+    display-request-duration: true
 
 # Green Mobility Business Properties
 green-mobility:
