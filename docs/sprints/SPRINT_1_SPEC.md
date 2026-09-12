@@ -72,6 +72,10 @@ erDiagram
         string license_class "A1 | A2 | B1 | B2"
         string kyc_status "PENDING | APPROVED | REJECTED"
         text kyc_rejection_reason
+        string citizen_card_front_url
+        string citizen_card_back_url
+        string driver_license_url
+        string face_portrait_url
         float8_array face_encoding_vector "512 dimensions"
         boolean is_active_shift
         numeric rating_avg
@@ -308,7 +312,34 @@ Base URL: `http://localhost:8080/api/v1`
 
 ---
 
-### 4.7. `GET /admin/drivers/kyc/pending` - Danh sách tài xế chờ duyệt KYC
+### 4.7. `GET /admin/drivers` - Danh sách tất cả tài xế (Hỗ trợ lọc theo trạng thái)
+* **Headers**: `Authorization: Bearer <ADMIN_JWT_TOKEN>`
+* **Query Parameters**: `status` (Optional: `PENDING`, `APPROVED`, `REJECTED`)
+* **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "driverId": "9c12b7a8-1234-5678-9abc-def012345678",
+      "fullName": "Phạm Hà Anh Thư",
+      "phoneNumber": "0901234567",
+      "citizenId": "079203001234",
+      "licenseNumber": "790123456789",
+      "vehicleModel": "VinFast Feliz S",
+      "licensePlate": "59-P1 987.65",
+      "batteryCapacityKwh": 3.5,
+      "kycStatus": "PENDING",
+      "submittedAt": "2026-09-07T15:05:00Z"
+    }
+  ],
+  "timestamp": "2026-09-07T15:19:00Z"
+}
+```
+
+---
+
+### 4.8. `GET /admin/drivers/kyc/pending` - Danh sách tài xế chờ duyệt KYC
 * **Headers**: `Authorization: Bearer <ADMIN_JWT_TOKEN>`
 * **Response (200 OK)**:
 ```json
@@ -333,7 +364,7 @@ Base URL: `http://localhost:8080/api/v1`
 
 ---
 
-### 4.8. `POST /admin/drivers/{driverId}/kyc/approve` - Admin duyệt hồ sơ
+### 4.9. `POST /admin/drivers/{driverId}/kyc/approve` - Admin duyệt hồ sơ
 * **Headers**: `Authorization: Bearer <ADMIN_JWT_TOKEN>`
 * **Response (200 OK)**:
 ```json
@@ -350,7 +381,7 @@ Base URL: `http://localhost:8080/api/v1`
 
 ---
 
-### 4.9. `POST /admin/drivers/{driverId}/kyc/reject` - Admin từ chối hồ sơ
+### 4.10. `POST /admin/drivers/{driverId}/kyc/reject` - Admin từ chối hồ sơ
 * **Headers**: `Authorization: Bearer <ADMIN_JWT_TOKEN>`, `Content-Type: application/json`
 * **Request Body**:
 ```json

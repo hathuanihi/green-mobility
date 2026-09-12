@@ -1,6 +1,10 @@
 package com.greenmobility.modules.drivervehicle.dto;
 
 import com.greenmobility.modules.drivervehicle.entity.VehicleType;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
@@ -8,16 +12,39 @@ import java.time.LocalDate;
 
 public class KycSubmissionRequest {
 
+    @NotBlank(message = "Số CCCD không được để trống")
     private String citizenId;
+
+    @NotBlank(message = "Số Giấy phép lái xe không được để trống")
     private String licenseNumber;
+
+    @NotBlank(message = "Hạng Giấy phép lái xe không được để trống")
     private String licenseClass;
+
+    @NotNull(message = "Loại phương tiện xe điện không được để trống")
     private VehicleType vehicleType;
+
+    @NotBlank(message = "Hãng xe không được để trống")
     private String make;
+
+    @NotBlank(message = "Dòng xe/Model không được để trống")
     private String model;
+
+    @NotBlank(message = "Biển số xe không được để trống")
     private String licensePlate;
+
+    @NotBlank(message = "Màu xe không được để trống")
     private String color;
+
+    @NotNull(message = "Dung lượng pin không được để trống")
+    @DecimalMin(value = "0.5", message = "Dung lượng pin thiết kế phải từ 0.5 kWh trở lên")
     private BigDecimal batteryCapacityKwh;
+
+    @NotNull(message = "Quãng đường di chuyển 1 lần sạc không được để trống")
+    @Min(value = 10, message = "Quãng đường di chuyển tối thiểu phải từ 10 km")
     private Integer rangePerChargeKm;
+
+    @NotNull(message = "Hạn kiểm định không được để trống")
     private LocalDate inspectionExpiryDate;
 
     private MultipartFile citizenFrontImage;

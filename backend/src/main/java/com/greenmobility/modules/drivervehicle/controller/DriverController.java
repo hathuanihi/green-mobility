@@ -5,9 +5,11 @@ import com.greenmobility.common.security.UserPrincipal;
 import com.greenmobility.modules.drivervehicle.dto.DriverProfileResponse;
 import com.greenmobility.modules.drivervehicle.dto.FaceVerifyResponse;
 import com.greenmobility.modules.drivervehicle.dto.KycSubmissionRequest;
+import com.greenmobility.modules.drivervehicle.dto.KycSubmitResponse;
 import com.greenmobility.modules.drivervehicle.service.DriverService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,11 +31,11 @@ public class DriverController {
 
     @Operation(summary = "Tài xế nộp hồ sơ KYC xe điện", description = "Gửi thông tin CCCD, GPLX, biển số xe điện, dung lượng pin kWh cùng 5 ảnh minh chứng (Multipart Form)")
     @PostMapping(value = "/kyc/submit", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<DriverProfileResponse>> submitKyc(
+    public ResponseEntity<ApiResponse<KycSubmitResponse>> submitKyc(
             @AuthenticationPrincipal UserPrincipal currentUser,
-            @ModelAttribute KycSubmissionRequest request) {
-        DriverProfileResponse response = driverService.submitKyc(currentUser.getId(), request);
-        return ResponseEntity.ok(ApiResponse.ok("Hồ sơ KYC đã được gửi thành công, vui lòng chờ duyệt", response));
+            @Valid @ModelAttribute KycSubmissionRequest request) {
+        KycSubmitResponse response = driverService.submitKyc(currentUser.getId(), request);
+        return ResponseEntity.ok(ApiResponse.ok("Hồ sơ đăng ký tài xế và xe điện đã được gửi thành công, vui lòng chờ duyệt", response));
     }
 
     @Operation(summary = "Xem hồ sơ tài xế và trạng thái KYC", description = "Lấy thông tin chi tiết hồ sơ tài xế và xe điện hiện tại")
@@ -50,6 +52,6 @@ public class DriverController {
             @AuthenticationPrincipal UserPrincipal currentUser,
             @RequestParam("selfieImage") MultipartFile selfieImage) {
         FaceVerifyResponse response = driverService.verifyShiftFace(currentUser.getId(), selfieImage);
-        return ResponseEntity.ok(ApiResponse.ok("Xác thực khuôn mặt thành công. Ca làm việc đã kích hoạt!", response));
+        return ResponseEntity.ok(ApiResponse.ok("Xác thực khuôn mặt thành công. Ca làm việc đã được kích hoạt!", response));
     }
 }

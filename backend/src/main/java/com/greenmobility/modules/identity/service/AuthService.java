@@ -3,10 +3,12 @@ package com.greenmobility.modules.identity.service;
 import com.greenmobility.common.exception.BadRequestException;
 import com.greenmobility.common.exception.ResourceNotFoundException;
 import com.greenmobility.common.security.JwtTokenProvider;
+import com.greenmobility.modules.drivervehicle.service.DriverPublicService;
 import com.greenmobility.modules.identity.dto.AuthResponse;
 import com.greenmobility.modules.identity.dto.LoginRequest;
 import com.greenmobility.modules.identity.dto.RegisterRequest;
 import com.greenmobility.modules.identity.dto.UserResponse;
+import com.greenmobility.modules.identity.entity.Role;
 import com.greenmobility.modules.identity.entity.User;
 import com.greenmobility.modules.identity.repository.UserRepository;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -22,15 +24,24 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
+    private final DriverPublicService driverPublicService;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenProvider tokenProvider) {
+    public AuthService(UserRepository userRepository,
+                       PasswordEncoder passwordEncoder,
+                       JwtTokenProvider tokenProvider,
+                       DriverPublicService driverPublicService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenProvider = tokenProvider;
+        this.driverPublicService = driverPublicService;
     }
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
+        if (request.getRole() != Role.ROLE_CUSTOMER && request.getRole() != Role.ROLE_DRIVER) {
+            throw new BadRequestException("Vai trò đăng ký không hợp lệ. Chỉ chấp nhận ROLE_CUSTOMER hoặc ROLE_DRIVER");
+        }
+
         if (userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
             throw new BadRequestException("Số điện thoại này đã được đăng ký trong hệ thống");
         }
@@ -72,6 +83,11 @@ public class AuthService {
 
         String token = tokenProvider.generateToken(user.getId(), user.getPhoneNumber(), user.getRole().name());
 
+        String kycStatus = null;
+        if (user.getRole() == Role.ROLE_DRIVER) {
+            kycStatus = driverPublicService.getKycStatusByUserId(user.getId()).orElse(null);
+        }
+
         return new AuthResponse(
                 user.getId(),
                 user.getPhoneNumber(),
@@ -79,7 +95,7 @@ public class AuthService {
                 user.getRole().name(),
                 token,
                 86400,
-                null
+                kycStatus
         );
     }
 

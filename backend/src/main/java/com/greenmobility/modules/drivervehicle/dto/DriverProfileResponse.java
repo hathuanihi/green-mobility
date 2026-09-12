@@ -15,6 +15,10 @@ public class DriverProfileResponse {
     private String licenseClass;
     private String kycStatus;
     private String kycRejectionReason;
+    private String citizenCardFrontUrl;
+    private String citizenCardBackUrl;
+    private String driverLicenseImageUrl;
+    private String facePortraitUrl;
     private Boolean isActiveShift;
     private BigDecimal ratingAvg;
     private Integer totalTripsCompleted;
@@ -26,9 +30,11 @@ public class DriverProfileResponse {
 
     public DriverProfileResponse(UUID driverId, UUID userId, String fullName, String phoneNumber,
                                  String citizenId, String driverLicenseNumber, String licenseClass,
-                                 String kycStatus, String kycRejectionReason, Boolean isActiveShift,
-                                 BigDecimal ratingAvg, Integer totalTripsCompleted, BigDecimal totalCo2SavedKg,
-                                 VehicleResponse vehicle, Instant createdAt) {
+                                 String kycStatus, String kycRejectionReason,
+                                 String citizenCardFrontUrl, String citizenCardBackUrl,
+                                 String driverLicenseImageUrl, String facePortraitUrl,
+                                 Boolean isActiveShift, BigDecimal ratingAvg, Integer totalTripsCompleted,
+                                 BigDecimal totalCo2SavedKg, VehicleResponse vehicle, Instant createdAt) {
         this.driverId = driverId;
         this.userId = userId;
         this.fullName = fullName;
@@ -38,6 +44,10 @@ public class DriverProfileResponse {
         this.licenseClass = licenseClass;
         this.kycStatus = kycStatus;
         this.kycRejectionReason = kycRejectionReason;
+        this.citizenCardFrontUrl = citizenCardFrontUrl;
+        this.citizenCardBackUrl = citizenCardBackUrl;
+        this.driverLicenseImageUrl = driverLicenseImageUrl;
+        this.facePortraitUrl = facePortraitUrl;
         this.isActiveShift = isActiveShift;
         this.ratingAvg = ratingAvg;
         this.totalTripsCompleted = totalTripsCompleted;
@@ -72,6 +82,21 @@ public class DriverProfileResponse {
 
     public String getKycRejectionReason() { return kycRejectionReason; }
     public void setKycRejectionReason(String kycRejectionReason) { this.kycRejectionReason = kycRejectionReason; }
+
+    public String getCitizenCardFrontUrl() { return citizenCardFrontUrl; }
+    public void setCitizenCardFrontUrl(String citizenCardFrontUrl) { this.citizenCardFrontUrl = citizenCardFrontUrl; }
+
+    public String getCitizenCardBackUrl() { return citizenCardBackUrl; }
+    public void setCitizenCardBackUrl(String citizenCardBackUrl) { this.citizenCardBackUrl = citizenCardBackUrl; }
+
+    public String getDriverLicenseImageUrl() { return driverLicenseImageUrl; }
+    public void setDriverLicenseImageUrl(String driverLicenseImageUrl) { this.driverLicenseImageUrl = driverLicenseImageUrl; }
+
+    public String getDriverLicenseUrl() { return driverLicenseImageUrl; }
+    public void setDriverLicenseUrl(String driverLicenseUrl) { this.driverLicenseImageUrl = driverLicenseUrl; }
+
+    public String getFacePortraitUrl() { return facePortraitUrl; }
+    public void setFacePortraitUrl(String facePortraitUrl) { this.facePortraitUrl = facePortraitUrl; }
 
     public Boolean getIsActiveShift() { return isActiveShift; }
     public void setIsActiveShift(Boolean activeShift) { isActiveShift = activeShift; }

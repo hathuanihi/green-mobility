@@ -120,6 +120,10 @@ CREATE TABLE driver_profiles (
     license_class VARCHAR(10) NOT NULL,                -- A1, A2, B1, B2
     kyc_status VARCHAR(30) NOT NULL DEFAULT 'PENDING', -- PENDING, APPROVED, REJECTED
     kyc_rejection_reason TEXT,
+    citizen_card_front_url VARCHAR(500),
+    citizen_card_back_url VARCHAR(500),
+    driver_license_url VARCHAR(500),
+    face_portrait_url VARCHAR(500),
     face_encoding_vector FLOAT8[],                     -- Vector 512 chiều nhận diện khuôn mặt
     is_active_shift BOOLEAN DEFAULT FALSE,             -- Đang trong ca làm việc
     rating_avg NUMERIC(3, 2) DEFAULT 5.00,

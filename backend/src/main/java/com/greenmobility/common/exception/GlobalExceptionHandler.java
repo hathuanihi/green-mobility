@@ -1,6 +1,7 @@
 package com.greenmobility.common.exception;
 
 import com.greenmobility.common.response.ApiResponse;
+import com.greenmobility.modules.drivervehicle.dto.FaceVerifyResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -9,6 +10,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -26,6 +28,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(ex.getMessage()));
     }
 
+    @ExceptionHandler(FaceVerificationFailedException.class)
+    public ResponseEntity<ApiResponse<FaceVerifyResponse>> handleFaceVerificationFailed(FaceVerificationFailedException ex) {
+        ApiResponse<FaceVerifyResponse> response = ApiResponse.error(ex.getMessage());
+        response.setData(ex.getData());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiResponse<Void>> handleBadCredentials(BadCredentialsException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -34,8 +43,16 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(ApiResponse.error("Bạn không có quyền thực hiện thao tác này"));
+        String msg = (ex.getMessage() != null && !ex.getMessage().isBlank() && !ex.getMessage().equals("Access Denied"))
+                ? ex.getMessage()
+                : "Bạn không có quyền thực hiện thao tác này";
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error(msg));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Dung lượng tệp tải lên vượt quá giới hạn cho phép (Tối đa 15MB cho mỗi tệp và 60MB cho toàn bộ yêu cầu)"));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -2,6 +2,7 @@ package com.greenmobility.identity;
 
 import com.greenmobility.common.exception.BadRequestException;
 import com.greenmobility.common.security.JwtTokenProvider;
+import com.greenmobility.modules.drivervehicle.service.DriverPublicService;
 import com.greenmobility.modules.identity.dto.AuthResponse;
 import com.greenmobility.modules.identity.dto.LoginRequest;
 import com.greenmobility.modules.identity.dto.RegisterRequest;
@@ -33,6 +34,9 @@ public class AuthServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private DriverPublicService driverPublicService;
+
     private JwtTokenProvider tokenProvider;
     private AuthService authService;
 
@@ -42,7 +46,7 @@ public class AuthServiceTest {
                 "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
                 86400
         );
-        authService = new AuthService(userRepository, passwordEncoder, tokenProvider);
+        authService = new AuthService(userRepository, passwordEncoder, tokenProvider, driverPublicService);
     }
 
     @Test

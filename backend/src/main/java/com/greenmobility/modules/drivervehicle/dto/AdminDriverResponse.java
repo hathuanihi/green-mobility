@@ -10,6 +10,7 @@ public class AdminDriverResponse {
     private String fullName;
     private String phoneNumber;
     private String citizenId;
+    private String licenseNumber;
     private String driverLicenseNumber;
     private String vehicleModel;
     private String licensePlate;
@@ -26,6 +27,7 @@ public class AdminDriverResponse {
         this.fullName = fullName;
         this.phoneNumber = phoneNumber;
         this.citizenId = citizenId;
+        this.licenseNumber = driverLicenseNumber;
         this.driverLicenseNumber = driverLicenseNumber;
         this.vehicleModel = vehicleModel;
         this.licensePlate = licensePlate;
@@ -46,8 +48,17 @@ public class AdminDriverResponse {
     public String getCitizenId() { return citizenId; }
     public void setCitizenId(String citizenId) { this.citizenId = citizenId; }
 
-    public String getDriverLicenseNumber() { return driverLicenseNumber; }
-    public void setDriverLicenseNumber(String driverLicenseNumber) { this.driverLicenseNumber = driverLicenseNumber; }
+    public String getLicenseNumber() { return licenseNumber != null ? licenseNumber : driverLicenseNumber; }
+    public void setLicenseNumber(String licenseNumber) {
+        this.licenseNumber = licenseNumber;
+        this.driverLicenseNumber = licenseNumber;
+    }
+
+    public String getDriverLicenseNumber() { return driverLicenseNumber != null ? driverLicenseNumber : licenseNumber; }
+    public void setDriverLicenseNumber(String driverLicenseNumber) {
+        this.driverLicenseNumber = driverLicenseNumber;
+        this.licenseNumber = driverLicenseNumber;
+    }
 
     public String getVehicleModel() { return vehicleModel; }
     public void setVehicleModel(String vehicleModel) { this.vehicleModel = vehicleModel; }

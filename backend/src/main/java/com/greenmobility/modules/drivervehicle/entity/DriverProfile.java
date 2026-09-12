@@ -32,6 +32,18 @@ public class DriverProfile {
     @Column(name = "kyc_rejection_reason", columnDefinition = "TEXT")
     private String kycRejectionReason;
 
+    @Column(name = "citizen_card_front_url", length = 500)
+    private String citizenCardFrontUrl;
+
+    @Column(name = "citizen_card_back_url", length = 500)
+    private String citizenCardBackUrl;
+
+    @Column(name = "driver_license_url", length = 500)
+    private String driverLicenseUrl;
+
+    @Column(name = "face_portrait_url", length = 500)
+    private String facePortraitUrl;
+
     @Column(name = "face_encoding_vector", columnDefinition = "float8[]")
     private Double[] faceEncodingVector;
 
@@ -95,6 +107,18 @@ public class DriverProfile {
 
     public String getKycRejectionReason() { return kycRejectionReason; }
     public void setKycRejectionReason(String kycRejectionReason) { this.kycRejectionReason = kycRejectionReason; }
+
+    public String getCitizenCardFrontUrl() { return citizenCardFrontUrl; }
+    public void setCitizenCardFrontUrl(String citizenCardFrontUrl) { this.citizenCardFrontUrl = citizenCardFrontUrl; }
+
+    public String getCitizenCardBackUrl() { return citizenCardBackUrl; }
+    public void setCitizenCardBackUrl(String citizenCardBackUrl) { this.citizenCardBackUrl = citizenCardBackUrl; }
+
+    public String getDriverLicenseUrl() { return driverLicenseUrl; }
+    public void setDriverLicenseUrl(String driverLicenseUrl) { this.driverLicenseUrl = driverLicenseUrl; }
+
+    public String getFacePortraitUrl() { return facePortraitUrl; }
+    public void setFacePortraitUrl(String facePortraitUrl) { this.facePortraitUrl = facePortraitUrl; }
 
     public Double[] getFaceEncodingVector() { return faceEncodingVector; }
     public void setFaceEncodingVector(Double[] faceEncodingVector) { this.faceEncodingVector = faceEncodingVector; }

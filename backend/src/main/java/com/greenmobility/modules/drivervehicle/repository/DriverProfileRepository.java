@@ -15,6 +15,7 @@ public interface DriverProfileRepository extends JpaRepository<DriverProfile, UU
     Optional<DriverProfile> findByCitizenId(String citizenId);
     Optional<DriverProfile> findByDriverLicenseNumber(String driverLicenseNumber);
     List<DriverProfile> findByKycStatusOrderByCreatedAtDesc(KycStatus kycStatus);
+    List<DriverProfile> findAllByOrderByCreatedAtDesc();
     boolean existsByCitizenId(String citizenId);
     boolean existsByDriverLicenseNumber(String driverLicenseNumber);
 }

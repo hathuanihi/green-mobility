@@ -2,9 +2,11 @@ package com.greenmobility.modules.drivervehicle.controller;
 
 import com.greenmobility.common.response.ApiResponse;
 import com.greenmobility.modules.drivervehicle.dto.AdminDriverResponse;
+import com.greenmobility.modules.drivervehicle.dto.AdminKycActionResponse;
 import com.greenmobility.modules.drivervehicle.dto.DriverProfileResponse;
 import com.greenmobility.modules.drivervehicle.dto.KycRejectRequest;
 import com.greenmobility.modules.drivervehicle.entity.FaceVerificationLog;
+import com.greenmobility.modules.drivervehicle.entity.KycStatus;
 import com.greenmobility.modules.drivervehicle.service.AdminDriverService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,6 +30,14 @@ public class AdminDriverController {
         this.adminDriverService = adminDriverService;
     }
 
+    @Operation(summary = "Lấy danh sách tất cả tài xế", description = "Danh sách tài xế hỗ trợ lọc theo trạng thái KYC (PENDING, APPROVED, REJECTED)")
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<AdminDriverResponse>>> getAllDrivers(
+            @RequestParam(required = false) KycStatus status) {
+        List<AdminDriverResponse> list = adminDriverService.getAllDrivers(status);
+        return ResponseEntity.ok(ApiResponse.ok(list));
+    }
+
     @Operation(summary = "Lấy danh sách tài xế chờ duyệt KYC", description = "Danh sách tất cả hồ sơ tài xế đang ở trạng thái PENDING kèm thông tin xe điện")
     @GetMapping("/kyc/pending")
     public ResponseEntity<ApiResponse<List<AdminDriverResponse>>> getPendingDrivers() {
@@ -44,18 +54,18 @@ public class AdminDriverController {
 
     @Operation(summary = "Phê duyệt hồ sơ KYC tài xế", description = "Chuyển trạng thái hồ sơ sang APPROVED, cho phép tài xế bật ca làm việc")
     @PostMapping("/{driverId}/kyc/approve")
-    public ResponseEntity<ApiResponse<Void>> approveKyc(@PathVariable UUID driverId) {
-        adminDriverService.approveKyc(driverId);
-        return ResponseEntity.ok(ApiResponse.ok("Hồ sơ tài xế và xe điện đã được phê duyệt thành công", null));
+    public ResponseEntity<ApiResponse<AdminKycActionResponse>> approveKyc(@PathVariable UUID driverId) {
+        AdminKycActionResponse actionResponse = adminDriverService.approveKyc(driverId);
+        return ResponseEntity.ok(ApiResponse.ok("Hồ sơ tài xế và phương tiện xe điện đã được phê duyệt thành công", actionResponse));
     }
 
     @Operation(summary = "Từ chối hồ sơ KYC tài xế", description = "Chuyển trạng thái hồ sơ sang REJECTED kèm lý do để tài xế cập nhật lại")
     @PostMapping("/{driverId}/kyc/reject")
-    public ResponseEntity<ApiResponse<Void>> rejectKyc(
+    public ResponseEntity<ApiResponse<AdminKycActionResponse>> rejectKyc(
             @PathVariable UUID driverId,
             @Valid @RequestBody KycRejectRequest request) {
-        adminDriverService.rejectKyc(driverId, request.getRejectionReason());
-        return ResponseEntity.ok(ApiResponse.ok("Đã từ chối hồ sơ tài xế và gửi thông báo bổ sung", null));
+        AdminKycActionResponse actionResponse = adminDriverService.rejectKyc(driverId, request.getRejectionReason());
+        return ResponseEntity.ok(ApiResponse.ok("Đã từ chối hồ sơ và gửi thông báo yêu cầu bổ sung cho tài xế", actionResponse));
     }
 
     @Operation(summary = "Xem lịch sử xác thực khuôn mặt", description = "Xem danh sách các lần so khớp khuôn mặt bật ca của tài xế kèm độ tương đồng Cosine")
