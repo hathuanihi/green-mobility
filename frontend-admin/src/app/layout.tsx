@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   description: "Nền tảng quản trị điều hành và báo cáo phát thải xe điện Green Mobility",
 };
 
+import { AuthProvider } from "@/lib/auth";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -14,7 +16,7 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <body className="antialiased min-h-screen bg-slate-950 text-slate-50">
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

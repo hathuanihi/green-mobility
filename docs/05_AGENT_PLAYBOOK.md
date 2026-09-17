@@ -120,6 +120,8 @@ gantt
 ---
 
 ### Sprint 1: Xác thực, Quản lý Tài xế, Xe điện & Xác thực Khuôn mặt (28/09 – 04/10/2026)
+> 📖 **Tài liệu Đặc tả Chi tiết**: [docs/sprints/SPRINT_1_SPEC.md](./sprints/SPRINT_1_SPEC.md)
+
 * **Mục tiêu**: Đăng ký, đăng nhập JWT cho 3 vai trò (Customer, Driver, Admin); nộp hồ sơ KYC xe điện; xác thực khuôn mặt tài xế (Face Verification) khi vào ca.
 * **Backend Tasks**:
   - `module-identity`: Entity `User`, `Role`, `SecurityConfig`, JWT Token Provider, API `/auth/register`, `/auth/login`.
