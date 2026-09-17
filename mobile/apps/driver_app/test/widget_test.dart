@@ -1,30 +1,29 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:driver_app/main.dart';
+import 'package:driver_app/presentation/screens/auth/login_screen.dart';
+import 'package:driver_app/data/repositories/auth_repository.dart';
+import 'package:driver_app/presentation/bloc/auth/auth_cubit.dart';
+import 'package:core_network/core_network.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('LoginScreen displays Green Driver branding and login button', (WidgetTester tester) async {
+    final tokenStorage = TokenStorage();
+    final apiClient = ApiClient(tokenStorage: tokenStorage);
+    final authApi = AuthApi(apiClient: apiClient);
+    final authRepo = AuthRepository(authApi: authApi, tokenStorage: tokenStorage);
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BlocProvider(
+          create: (_) => AuthCubit(authRepository: authRepo),
+          child: const LoginScreen(),
+        ),
+      ),
+    );
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Green Driver'), findsOneWidget);
+    expect(find.text('Đăng nhập'), findsOneWidget);
+    expect(find.text('Số điện thoại'), findsOneWidget);
   });
 }

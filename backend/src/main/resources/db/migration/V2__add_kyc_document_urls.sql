@@ -1,4 +1,4 @@
--- V1_1__add_kyc_document_urls.sql: Bổ sung các cột lưu trữ URL ảnh tài liệu KYC cho bảng driver_profiles
+-- V2__add_kyc_document_urls.sql: Bổ sung các cột lưu trữ URL ảnh tài liệu KYC cho bảng driver_profiles
 
 ALTER TABLE driver_profiles
     ADD COLUMN IF NOT EXISTS citizen_card_front_url VARCHAR(500),

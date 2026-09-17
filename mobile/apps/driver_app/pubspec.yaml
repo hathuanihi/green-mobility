@@ -20,6 +20,7 @@ dependencies:
     path: ../../packages/core_ui
   core_map:
     path: ../../packages/core_map
+  image_picker: ^1.2.3
 
 dev_dependencies:
   flutter_test:

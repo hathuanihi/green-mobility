@@ -54,7 +54,7 @@ mobile/**/ios/Flutter/Flutter.podspec
 *.key
 
 # Docker local volumes
-data/
+/data/
 
 # Uploads & Media
 uploads/
