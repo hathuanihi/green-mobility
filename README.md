@@ -4,7 +4,7 @@
 > **Sinh viên thực hiện**:  
 > - **Phạm Hà Anh Thư** — MSSV: 23521544  
 > - **Nguyễn Minh Thiện** — MSSV: 23521484  
-> **Cán bộ hướng dẫn**: ThS. Trần Thị Hồng Yến  
+> **Cán bộ hướng dẫn**: TS. Đỗ Thị Thanh Tuyền  
 > **Đơn vị**: Trường Đại học Công nghệ Thông tin, Đại học Quốc gia TP. Hồ Chí Minh (UIT - ĐHQG TP.HCM)  
 > **Thời gian thực hiện**: 07/09/2026 – 11/01/2027
 
