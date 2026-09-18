@@ -118,4 +118,56 @@ class DriverApi {
     }
     throw Exception('Xác thực khuôn mặt thất bại');
   }
+
+  /// Đồng bộ vị trí GPS và % pin xe điện lên hệ thống Matching
+  Future<void> pingLocation(DriverLocationPingModel ping) async {
+    await apiClient.dio.post(
+      '/driver/location/ping',
+      data: ping.toJson(),
+    );
+  }
+
+  /// Tài xế chấp nhận cuốc xe trong vòng 15 giây đếm ngược
+  Future<DriverTripModel> acceptTrip(String tripId) async {
+    final response = await apiClient.dio.post('/driver/trips/$tripId/accept');
+    final responseData = response.data;
+    if (responseData is Map<String, dynamic> && responseData['data'] != null) {
+      return DriverTripModel.fromJson(responseData['data'] as Map<String, dynamic>);
+    }
+    throw Exception('Không thể nhận cuốc xe');
+  }
+
+  /// Tài xế từ chối cuốc xe
+  Future<void> declineTrip(String tripId, {String? reason}) async {
+    await apiClient.dio.post(
+      '/driver/trips/$tripId/decline',
+      data: {
+        'cancelReason': reason ?? 'Tài xế bận',
+      },
+    );
+  }
+
+  /// Lấy cuốc xe đang thực hiện của tài xế
+  Future<TripModel?> getCurrentTrip() async {
+    final response = await apiClient.dio.get('/driver/trips/current');
+    final responseData = response.data;
+    if (responseData is Map<String, dynamic> && responseData['data'] != null) {
+      return TripModel.fromJson(responseData['data'] as Map<String, dynamic>);
+    }
+    return null;
+  }
+
+  /// Kiểm tra xem có cuốc xe nào đang được Matching Engine điều phối tới tài xế không
+  Future<DispatchNotificationModel?> getPendingDispatch() async {
+    try {
+      final response = await apiClient.dio.get('/driver/trips/dispatch/pending');
+      final responseData = response.data;
+      if (responseData is Map<String, dynamic> && responseData['data'] != null) {
+        return DispatchNotificationModel.fromJson(responseData['data'] as Map<String, dynamic>);
+      }
+    } catch (_) {
+      // Return null if no pending dispatch or network error
+    }
+    return null;
+  }
 }

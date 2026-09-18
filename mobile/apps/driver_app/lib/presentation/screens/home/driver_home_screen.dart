@@ -2,11 +2,15 @@ import 'package:core_model/core_model.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../data/repositories/driver_repository.dart';
 import '../../bloc/auth/auth_cubit.dart';
 import '../../bloc/driver/driver_cubit.dart';
 import '../../bloc/driver/driver_state.dart';
+import '../../services/location_ping_service.dart';
+import '../dispatch/ride_dispatch_modal.dart';
 import '../kyc/kyc_wizard_screen.dart';
 import '../shift/face_verification_modal.dart';
+import '../trip/driver_active_trip_screen.dart';
 import 'widgets/kyc_banner.dart';
 import 'widgets/shift_toggle_card.dart';
 import 'widgets/driver_stats_card.dart';
@@ -20,10 +24,22 @@ class DriverHomeScreen extends StatefulWidget {
 }
 
 class _DriverHomeScreenState extends State<DriverHomeScreen> {
+  LocationPingService? _locationPingService;
+
   @override
   void initState() {
     super.initState();
+    final driverRepo = context.read<DriverRepository>();
+    _locationPingService = LocationPingService(driverRepository: driverRepo);
+    _locationPingService!.incomingDispatchNotifier.addListener(_onIncomingDispatchChanged);
     context.read<DriverCubit>().loadProfile();
+  }
+
+  @override
+  void dispose() {
+    _locationPingService?.incomingDispatchNotifier.removeListener(_onIncomingDispatchChanged);
+    _locationPingService?.dispose();
+    super.dispose();
   }
 
   void _openKycWizard(DriverProfile? profile) {
@@ -46,9 +62,10 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
 
       if (passed == true && mounted) {
         context.read<DriverCubit>().updateShiftLocally(true);
+        _locationPingService?.start();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Xác thực sinh trắc học thành công! Bạn đã TRỰC TUYẾN.'),
+            content: Text('Xác thực sinh trắc học thành công! Bạn đã TRỰC TUYẾN và đang phát GPS.'),
             backgroundColor: GreenColors.primaryEmerald,
           ),
         );
@@ -56,14 +73,44 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     } else {
       // Turn shift off
       context.read<DriverCubit>().updateShiftLocally(false);
+      _locationPingService?.stop();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Đã tắt ca làm việc (Ngoại tuyến).'),
+          content: Text('Đã tắt ca làm việc (Ngoại tuyến). Dừng phát tín hiệu GPS.'),
           backgroundColor: Colors.white24,
         ),
       );
     }
   }
+
+  Future<void> _onIncomingDispatchChanged() async {
+    final dispatch = _locationPingService?.incomingDispatchNotifier.value;
+    if (dispatch == null || !mounted) return;
+
+    _locationPingService?.setDispatchModalShowing(true);
+    final driverRepo = context.read<DriverRepository>();
+
+    final acceptedTrip = await RideDispatchModal.show(
+      context,
+      dispatch: dispatch,
+      driverRepository: driverRepo,
+    );
+
+    _locationPingService?.clearIncomingDispatch();
+    _locationPingService?.setDispatchModalShowing(false);
+
+    if (acceptedTrip != null && mounted) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => DriverActiveTripScreen(
+            initialTrip: acceptedTrip,
+            driverRepository: driverRepo,
+          ),
+        ),
+      );
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -169,7 +216,99 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                       }
                     },
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
+
+                  // GPS & Battery Live Ping Status (When Online)
+                  if (isOnline && _locationPingService != null) ...[
+                    ValueListenableBuilder<DriverLocationPingModel?>(
+                      valueListenable: _locationPingService!.lastPingNotifier,
+                      builder: (context, ping, _) {
+                        return Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: GreenColors.surfaceDark,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: GreenColors.primaryEmerald.withValues(alpha: 0.3)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(Icons.radar, color: GreenColors.primaryEmerald, size: 18),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'TRẠNG THÁI GPS & PIN TRỰC TUYẾN',
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: GreenColors.primaryEmerald),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text('Tọa độ hiện tại:', style: TextStyle(fontSize: 10, color: Colors.white54)),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        ping != null ? '${ping.lat}, ${ping.lng}' : '10.776530, 106.700981',
+                                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
+                                      ),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.battery_charging_full, color: GreenColors.electricCyan, size: 18),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${ping?.batteryPercent ?? 94}% Pin',
+                                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: GreenColors.electricCyan),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: GreenColors.primaryEmerald.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: GreenColors.primaryEmerald.withValues(alpha: 0.3)),
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 12,
+                                      height: 12,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(GreenColors.primaryEmerald),
+                                      ),
+                                    ),
+                                    SizedBox(width: 10),
+                                    Text(
+                                      'Đang sẵn sàng đón khách & chờ điều phối...',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: GreenColors.primaryEmerald,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                  ],
 
                   // Driver Stats Card (CO2 & Rating & Trips)
                   DriverStatsCard(
