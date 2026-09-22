@@ -286,5 +286,10 @@ public class MatchingEngineService {
 
         // Send to driver's private queue via WebSocket
         messagingTemplate.convertAndSendToUser(candidate.driverId.toString(), "/queue/ride-dispatch", dto);
+        driverProfileRepository.findById(candidate.driverId).ifPresent(p -> {
+            if (p.getUserId() != null) {
+                messagingTemplate.convertAndSendToUser(p.getUserId().toString(), "/queue/ride-dispatch", dto);
+            }
+        });
     }
 }

@@ -37,5 +37,9 @@ class DriverRepository {
   Future<DispatchNotificationModel?> getPendingDispatch() async {
     return await driverApi.getPendingDispatch();
   }
+
+  Future<void> endShift() async {
+    await driverApi.endShift();
+  }
 }
 

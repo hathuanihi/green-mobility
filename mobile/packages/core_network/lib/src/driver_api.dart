@@ -170,4 +170,9 @@ class DriverApi {
     }
     return null;
   }
+
+  /// Tắt ca làm việc của tài xế và xóa khỏi Redis GEO
+  Future<void> endShift() async {
+    await apiClient.dio.post('/driver/shift/end');
+  }
 }

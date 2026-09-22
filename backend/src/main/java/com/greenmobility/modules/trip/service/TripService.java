@@ -90,7 +90,7 @@ public class TripService {
                 .setScale(1, RoundingMode.HALF_UP).doubleValue();
         int durationMinutes = route.durationSeconds() / 60;
 
-        BigDecimal fare = fareCalculationService.calculateFare(request.getVehicleType(), distanceKm);
+        BigDecimal fare = fareCalculationService.calculateFare(request.getVehicleType(), distanceKm, Instant.now());
         CarbonEstimateDto carbon = carbonEstimateService.estimateCarbon(request.getVehicleType(), distanceKm);
 
         return new TripEstimateResponse(
@@ -126,7 +126,8 @@ public class TripService {
                 request.getDropoffLat(), request.getDropoffLng()
         );
         double distanceKm = route.distanceMeters() / 1000.0;
-        BigDecimal fare = fareCalculationService.calculateFare(request.getVehicleType(), distanceKm);
+        Instant now = Instant.now();
+        BigDecimal fare = fareCalculationService.calculateFare(request.getVehicleType(), distanceKm, now);
         CarbonEstimateDto carbon = carbonEstimateService.estimateCarbon(request.getVehicleType(), distanceKm);
 
         // Generate Trip Entity

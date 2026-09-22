@@ -22,6 +22,8 @@ import com.greenmobility.modules.identity.entity.User;
 import com.greenmobility.modules.identity.repository.UserRepository;
 import com.greenmobility.modules.identity.service.AuthService;
 import com.greenmobility.modules.identity.service.UserPublicService;
+import com.greenmobility.modules.matching.repository.DriverGeoRedisRepository;
+import com.greenmobility.modules.trip.repository.TripRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -59,6 +61,9 @@ public class Sprint1AcceptanceCriteriaTest {
     @Mock private FileStorageService fileStorageService;
     @Mock private FaceVerificationService faceVerificationService;
 
+    @Mock private DriverGeoRedisRepository driverGeoRepository;
+    @Mock private TripRepository tripRepository;
+
     private DriverPublicService driverPublicService;
     private DriverService driverService;
     private AdminDriverService adminDriverService;
@@ -81,7 +86,9 @@ public class Sprint1AcceptanceCriteriaTest {
                 faceVerificationLogRepository,
                 userPublicService,
                 fileStorageService,
-                faceVerificationService
+                faceVerificationService,
+                driverGeoRepository,
+                tripRepository
         );
 
         adminDriverService = new AdminDriverService(
@@ -383,5 +390,27 @@ public class Sprint1AcceptanceCriteriaTest {
                 !log.getIsPassed() &&
                 log.getDriverId().equals(testDriverId)
         ));
+    }
+
+    @Test
+    @DisplayName("Tắt ca làm việc: Cập nhật isActiveShift=false và xóa vị trí khỏi Redis GEO")
+    void testEndShift_Success() {
+        DriverProfile profile = new DriverProfile(testUserId, "079203001234", "790123456789", "A1");
+        profile.setId(testDriverId);
+        profile.setIsActiveShift(true);
+
+        Vehicle vehicle = new Vehicle(testDriverId, VehicleType.ELECTRIC_MOTORBIKE, "VinFast", "Feliz S", "59-P1 999.99", "Đen",
+                new BigDecimal("3.5"), 120, LocalDate.now().plusYears(1));
+
+        when(driverProfileRepository.findByUserId(testUserId)).thenReturn(Optional.of(profile));
+        when(tripRepository.findFirstByDriverIdAndStatusInOrderByRequestedAtDesc(eq(testDriverId), any())).thenReturn(Optional.empty());
+        when(vehicleRepository.findByDriverId(testDriverId)).thenReturn(Optional.of(vehicle));
+
+        driverService.endShift(testUserId);
+
+        assertFalse(profile.getIsActiveShift());
+        verify(driverProfileRepository).save(profile);
+        verify(driverGeoRepository).removeLocation(testDriverId, VehicleType.ELECTRIC_MOTORBIKE);
+        verify(driverGeoRepository).clearPendingDispatch(testDriverId);
     }
 }

@@ -75,3 +75,39 @@ npm install
 npm run dev
 ```
 Truy cập: `http://localhost:3000`
+
+### 4. Khởi chạy Ứng dụng Di động (Flutter Mobile Apps)
+
+Dự án gồm 2 ứng dụng độc lập trong thư mục `mobile/apps/`:
+* **Customer App (`customer_app`)**: Dành cho Khách hàng đặt xe điện và xem lượng CO2 giảm.
+* **Driver App (`driver_app`)**: Dành cho Tài xế xe điện bật ca, nhận cuốc và phát GPS.
+
+#### Cài đặt thư viện:
+```bash
+cd mobile/apps/customer_app && flutter pub get
+cd ../driver_app && flutter pub get
+```
+
+#### Khởi chạy Khách hàng App (Customer App):
+```bash
+cd mobile/apps/customer_app
+# Chạy trên trình duyệt Chrome (kiểm thử nhanh UI):
+flutter run -d chrome
+# Hoặc chạy trên Android Emulator:
+flutter run -d emulator-5554
+```
+
+#### Khởi chạy Tài xế App (Driver App):
+```bash
+cd mobile/apps/driver_app
+# Chạy trên Chrome (chọn cổng khác):
+flutter run -d chrome --web-port 8082
+# Hoặc chạy trên thiết bị / máy ảo Android:
+flutter run
+```
+
+> **Lưu ý kết nối mạng Backend**:
+> - Khi chạy trên **Android Emulator**: `ApiClient` tự động kết nối qua `http://10.0.2.2:8080/api/v1` (trỏ về localhost máy host).
+> - Khi chạy trên **Chrome / iOS Simulator / Desktop**: Kết nối qua `http://localhost:8080/api/v1`.
+> - Khi chạy trên **Thiết bị thật (Physical Device)**: Cần đổi IP sang IP mạng LAN của máy tính host (VD: `http://192.168.1.x:8080/api/v1`).
+

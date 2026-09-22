@@ -72,14 +72,21 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
       }
     } else {
       // Turn shift off
-      context.read<DriverCubit>().updateShiftLocally(false);
-      _locationPingService?.stop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đã tắt ca làm việc (Ngoại tuyến). Dừng phát tín hiệu GPS.'),
-          backgroundColor: Colors.white24,
-        ),
-      );
+      try {
+        await context.read<DriverRepository>().endShift();
+      } catch (e) {
+        debugPrint('Lỗi tắt ca trên backend: $e');
+      }
+      if (mounted) {
+        context.read<DriverCubit>().updateShiftLocally(false);
+        _locationPingService?.stop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đã tắt ca làm việc (Ngoại tuyến). Dừng phát tín hiệu GPS và đã xóa vị trí khỏi hệ thống.'),
+            backgroundColor: Colors.white24,
+          ),
+        );
+      }
     }
   }
 
