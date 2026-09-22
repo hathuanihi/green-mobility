@@ -19,6 +19,7 @@ Dự án có đầy đủ tài liệu kiến trúc, database schema, API contrac
 * 📱 **[docs/03_MOBILE_SPEC.md](./docs/03_MOBILE_SPEC.md)**: Đặc tả kỹ thuật ứng dụng di động Flutter (Clean Architecture + BLoC), trải nghiệm Khách hàng (Bản đồ mượt mà, Impact Receipt, Ví Carbon) và Tài xế (Face Verification, Pop-up nhận cuốc 15s, Background GPS).
 * 💻 **[docs/04_ADMIN_SPEC.md](./docs/04_ADMIN_SPEC.md)**: Đặc tả Web Admin Portal (Next.js App Router, Tailwind CSS, Shadcn UI), Dashboard CO2, duyệt KYC xe điện, cấu hình hệ số phát thải, bản đồ Replay hành trình GPS, giám sát gian lận ML (Isolation Forest) và AI Copilot Chatbot.
 * 🤖 **[docs/05_AGENT_PLAYBOOK.md](./docs/05_AGENT_PLAYBOOK.md)**: Cẩm nang hướng dẫn cho AI Coding Agent với 6 nguyên tắc bất biến, lộ trình 8 Sprint, bộ Mock Data tọa độ TP.HCM và Prompt Templates chuẩn.
+* 📋 **[docs/sprints/SPRINT_1_PROGRESS_REPORT.md](./docs/sprints/SPRINT_1_PROGRESS_REPORT.md)**: Báo cáo Tiến độ Hoàn thành Sprint 1 (Authentication, KYC, Biometrics 512D) kèm ảnh chụp màn hình minh chứng thực tế trên Web và Mobile.
 
 ---
 
