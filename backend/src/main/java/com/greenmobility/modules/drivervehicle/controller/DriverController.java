@@ -54,4 +54,12 @@ public class DriverController {
         FaceVerifyResponse response = driverService.verifyShiftFace(currentUser.getId(), selfieImage);
         return ResponseEntity.ok(ApiResponse.ok("Xác thực khuôn mặt thành công. Ca làm việc đã được kích hoạt!", response));
     }
+
+    @Operation(summary = "Tắt ca làm việc của tài xế", description = "Chuyển trạng thái sang ngoại tuyến và xóa vị trí khỏi Redis GEO")
+    @PostMapping("/shift/end")
+    public ResponseEntity<ApiResponse<Void>> endShift(
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        driverService.endShift(currentUser.getId());
+        return ResponseEntity.ok(ApiResponse.ok("Đã tắt ca làm việc thành công. Đã chuyển sang trạng thái ngoại tuyến.", null));
+    }
 }

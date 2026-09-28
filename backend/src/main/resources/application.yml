@@ -42,6 +42,7 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
+    validate-on-migrate: false
 
   # Redis Configuration
   data:
@@ -96,3 +97,10 @@ green-mobility:
     default-grid-emission-factor-gco2-kwh: 722.1
     tree-absorption-daily-kg: 0.06
     led-bulb-consumption-hourly-gco2: 7.221
+  map:
+    goong:
+      api-key: ${GOONG_API_KEY:}
+      maptiles-key: ${GOONG_MAPTILES_KEY:}
+      base-url: ${GOONG_BASE_URL:https://rsapi.goong.io}
+      tiles-url: ${GOONG_TILES_URL:https://tiles.goong.io}
+

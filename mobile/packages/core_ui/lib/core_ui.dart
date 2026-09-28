@@ -7,6 +7,7 @@ export 'src/widgets/green_text_field.dart';
 export 'src/widgets/green_card.dart';
 export 'src/widgets/status_badge.dart';
 export 'src/widgets/document_picker_tile.dart';
+export 'src/utils/formatters.dart';
 
 class GreenColors {
   static const Color primaryEmerald = Color(0xFF10B981);

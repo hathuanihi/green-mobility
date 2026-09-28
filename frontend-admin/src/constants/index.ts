@@ -1,5 +1,15 @@
-import { KycStatus, VehicleType } from "@/types";
-import { Clock, CheckCircle2, XCircle } from "lucide-react";
+import { KycStatus, VehicleType, TripStatus } from "@/types";
+import {
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Search,
+  Zap,
+  Navigation,
+  MapPin,
+  CheckCheck,
+  AlertCircle,
+} from "lucide-react";
 
 export const KYC_STATUS_CONFIG: Record<
   KycStatus,
@@ -46,11 +56,53 @@ export const KYC_STATUS_CONFIG: Record<
   },
 };
 
-export const VEHICLE_TYPE_LABELS: Record<VehicleType, string> = {
-  ELECTRIC_MOTORBIKE: "Xe máy điện (E-Bike 2 bánh)",
-  ELECTRIC_CAR_4SEAT: "Ô tô điện 4 chỗ (E-Car)",
-  ELECTRIC_CAR_7SEAT: "Ô tô điện 7 chỗ (E-Car)",
+export const CARBON_CONSTANTS = {
+  TREE_DAILY_ABSORPTION_GRAMS: 60.0,
+  LED_HOURLY_GRAMS: 7.221,
+} as const;
+
+export const ACTIVE_TRIP_STATUSES: readonly TripStatus[] = [
+  "MATCHED",
+  "DRIVER_ARRIVING",
+  "ARRIVED",
+  "IN_TRIP",
+] as const;
+
+export function isActiveTrip(status: TripStatus): boolean {
+  return ACTIVE_TRIP_STATUSES.includes(status);
+}
+
+export const VEHICLE_CONFIG: Record<
+  VehicleType,
+  {
+    label: string;
+    shortLabel: string;
+    icon: string;
+  }
+> = {
+  ELECTRIC_MOTORBIKE: {
+    label: "Xe máy điện (E-Bike 2 bánh)",
+    shortLabel: "E-Bike",
+    icon: "🛵",
+  },
+  ELECTRIC_CAR_4SEAT: {
+    label: "Ô tô điện 4 chỗ (E-Car)",
+    shortLabel: "E-Car 4S",
+    icon: "🚗",
+  },
+  ELECTRIC_CAR_7SEAT: {
+    label: "Ô tô điện 7 chỗ (E-Car)",
+    shortLabel: "E-Car 7S",
+    icon: "🚙",
+  },
 };
+
+export const VEHICLE_TYPE_LABELS: Record<VehicleType, string> = {
+  ELECTRIC_MOTORBIKE: VEHICLE_CONFIG.ELECTRIC_MOTORBIKE.label,
+  ELECTRIC_CAR_4SEAT: VEHICLE_CONFIG.ELECTRIC_CAR_4SEAT.label,
+  ELECTRIC_CAR_7SEAT: VEHICLE_CONFIG.ELECTRIC_CAR_7SEAT.label,
+};
+
 
 export const BIOMETRIC_CONFIG = {
   THRESHOLD: 0.75, // Ngưỡng Cosine Similarity τ >= 75%
@@ -84,3 +136,63 @@ export const KYC_DOCUMENTS = [
     badge: "Bắt buộc",
   },
 ] as const;
+
+export const TRIP_STATUS_CONFIG: Record<
+  TripStatus,
+  {
+    label: string;
+    badgeClass: string;
+    icon: any;
+    color: string;
+  }
+> = {
+  REQUESTED: {
+    label: "Yêu cầu mới",
+    badgeClass: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    icon: Clock,
+    color: "blue",
+  },
+  SEARCHING: {
+    label: "Đang tìm tài xế",
+    badgeClass: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    icon: Search,
+    color: "amber",
+  },
+  MATCHED: {
+    label: "Đã ghép tài xế",
+    badgeClass: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
+    icon: Zap,
+    color: "cyan",
+  },
+  DRIVER_ARRIVING: {
+    label: "Tài xế đang đến",
+    badgeClass: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+    icon: Navigation,
+    color: "indigo",
+  },
+  ARRIVED: {
+    label: "Đã tới điểm đón",
+    badgeClass: "bg-teal-500/10 text-teal-400 border-teal-500/20",
+    icon: MapPin,
+    color: "teal",
+  },
+  IN_TRIP: {
+    label: "Đang di chuyển",
+    badgeClass: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    icon: Navigation,
+    color: "emerald",
+  },
+  COMPLETED: {
+    label: "Đã hoàn thành",
+    badgeClass: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+    icon: CheckCheck,
+    color: "purple",
+  },
+  CANCELLED: {
+    label: "Đã hủy",
+    badgeClass: "bg-rose-500/10 text-rose-400 border-rose-500/20",
+    icon: AlertCircle,
+    color: "rose",
+  },
+};
+

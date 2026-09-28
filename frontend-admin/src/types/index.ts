@@ -85,3 +85,55 @@ export interface AuthResponseData {
   expiresIn: number;
   kycStatus?: string;
 }
+
+export type TripStatus =
+  | "REQUESTED"
+  | "SEARCHING"
+  | "MATCHED"
+  | "DRIVER_ARRIVING"
+  | "ARRIVED"
+  | "IN_TRIP"
+  | "COMPLETED"
+  | "CANCELLED";
+
+export type PaymentMethod = "CASH" | "VNPAY" | "MOMO" | "GREEN_WALLET";
+export type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "REFUNDED";
+
+export interface TripDriverSummary {
+  driverId: string;
+  fullName: string;
+  phoneNumber: string;
+  avatarUrl?: string;
+  ratingAvg: number;
+  vehicleModel: string;
+  licensePlate: string;
+  currentLat?: number;
+  currentLng?: number;
+}
+
+export interface Trip {
+  tripId: string;
+  tripCode: string;
+  status: TripStatus;
+  vehicleType: VehicleType;
+  pickupAddress: string;
+  pickupLat: number;
+  pickupLng: number;
+  dropoffAddress: string;
+  dropoffLat: number;
+  dropoffLng: number;
+  fareAmountVnd: number;
+  discountAmountVnd?: number;
+  finalAmountVnd: number;
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
+  estimatedDistanceKm: number;
+  estimatedDurationMinutes: number;
+  co2SavedGrams: number;
+  driver?: TripDriverSummary;
+  cancelReason?: string;
+  cancelledBy?: string;
+  requestedAt: string;
+  matchedAt?: string;
+}
+

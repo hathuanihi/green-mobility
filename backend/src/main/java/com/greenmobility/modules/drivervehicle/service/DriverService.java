@@ -18,6 +18,9 @@ import com.greenmobility.modules.drivervehicle.repository.FaceVerificationLogRep
 import com.greenmobility.modules.drivervehicle.repository.VehicleRepository;
 import com.greenmobility.modules.identity.dto.UserPublicDto;
 import com.greenmobility.modules.identity.service.UserPublicService;
+import com.greenmobility.modules.matching.repository.DriverGeoRedisRepository;
+import com.greenmobility.modules.trip.entity.TripStatus;
+import com.greenmobility.modules.trip.repository.TripRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +31,7 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -39,6 +43,8 @@ public class DriverService {
     private final UserPublicService userPublicService;
     private final FileStorageService fileStorageService;
     private final FaceVerificationService faceVerificationService;
+    private final DriverGeoRedisRepository driverGeoRepository;
+    private final TripRepository tripRepository;
 
     public DriverService(
             DriverProfileRepository driverProfileRepository,
@@ -46,13 +52,17 @@ public class DriverService {
             FaceVerificationLogRepository faceVerificationLogRepository,
             UserPublicService userPublicService,
             FileStorageService fileStorageService,
-            FaceVerificationService faceVerificationService) {
+            FaceVerificationService faceVerificationService,
+            DriverGeoRedisRepository driverGeoRepository,
+            TripRepository tripRepository) {
         this.driverProfileRepository = driverProfileRepository;
         this.vehicleRepository = vehicleRepository;
         this.faceVerificationLogRepository = faceVerificationLogRepository;
         this.userPublicService = userPublicService;
         this.fileStorageService = fileStorageService;
         this.faceVerificationService = faceVerificationService;
+        this.driverGeoRepository = driverGeoRepository;
+        this.tripRepository = tripRepository;
     }
 
     @Transactional
@@ -204,12 +214,46 @@ public class DriverService {
         } else {
             profile.setIsActiveShift(false);
             driverProfileRepository.save(profile);
+            vehicleRepository.findByDriverId(profile.getId()).ifPresent(vehicle -> {
+                driverGeoRepository.removeLocation(profile.getId(), vehicle.getVehicleType());
+            });
+            driverGeoRepository.clearPendingDispatch(profile.getId());
             BigDecimal percentage = score.multiply(BigDecimal.valueOf(100)).setScale(1, RoundingMode.HALF_UP);
             throw new FaceVerificationFailedException(
                     "Xác thực khuôn mặt thất bại (Độ khớp: " + percentage + "%). Khuôn mặt không trùng khớp với hồ sơ đăng ký tài xế!",
                     new FaceVerifyResponse(false, score, false, verifiedAt)
             );
         }
+    }
+
+    @Transactional
+    public void endShift(UUID userId) {
+        DriverProfile profile = driverProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hồ sơ tài xế"));
+
+        if (!Boolean.TRUE.equals(profile.getIsActiveShift())) {
+            return;
+        }
+
+        // Validate driver has no active ongoing trips
+        List<TripStatus> activeStatuses = List.of(
+                TripStatus.MATCHED,
+                TripStatus.DRIVER_ARRIVING,
+                TripStatus.ARRIVED,
+                TripStatus.IN_TRIP
+        );
+        if (tripRepository.findFirstByDriverIdAndStatusInOrderByRequestedAtDesc(profile.getId(), activeStatuses).isPresent()) {
+            throw new BadRequestException("Bạn đang có cuốc xe chưa hoàn thành! Không thể tắt ca làm việc khi đang phục vụ khách.");
+        }
+
+        profile.setIsActiveShift(false);
+        driverProfileRepository.save(profile);
+
+        // Remove location from Redis GEO available set and clear pending dispatches
+        vehicleRepository.findByDriverId(profile.getId()).ifPresent(vehicle -> {
+            driverGeoRepository.removeLocation(profile.getId(), vehicle.getVehicleType());
+        });
+        driverGeoRepository.clearPendingDispatch(profile.getId());
     }
 
     private DriverProfileResponse mapToProfileResponse(UserPublicDto user, DriverProfile profile, Vehicle vehicle) {

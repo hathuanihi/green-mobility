@@ -4,6 +4,7 @@ export 'src/token_storage.dart';
 export 'src/api_client.dart';
 export 'src/auth_api.dart';
 export 'src/driver_api.dart';
+export 'src/trip_api.dart';
 
 class AppConfig {
   static const String defaultApiUrl = 'http://localhost:8080/api/v1';
