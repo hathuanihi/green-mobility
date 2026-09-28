@@ -83,7 +83,8 @@ public class TripService {
     public TripEstimateResponse estimateTrip(TripEstimateRequest request) {
         RoutingService.RouteInfo route = routingService.calculateRoute(
                 request.getPickupLat(), request.getPickupLng(),
-                request.getDropoffLat(), request.getDropoffLng()
+                request.getDropoffLat(), request.getDropoffLng(),
+                request.getVehicleType() != null ? request.getVehicleType().name() : "ELECTRIC_MOTORBIKE"
         );
 
         double distanceKm = BigDecimal.valueOf(route.distanceMeters() / 1000.0)
@@ -123,7 +124,8 @@ public class TripService {
         // Server-side recalculation to prevent client tampering
         RoutingService.RouteInfo route = routingService.calculateRoute(
                 request.getPickupLat(), request.getPickupLng(),
-                request.getDropoffLat(), request.getDropoffLng()
+                request.getDropoffLat(), request.getDropoffLng(),
+                request.getVehicleType() != null ? request.getVehicleType().name() : "ELECTRIC_MOTORBIKE"
         );
         double distanceKm = route.distanceMeters() / 1000.0;
         Instant now = Instant.now();

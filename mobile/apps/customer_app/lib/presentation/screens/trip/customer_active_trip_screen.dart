@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:core_map/core_map.dart';
 import 'package:core_model/core_model.dart';
 import 'package:core_ui/core_ui.dart';
 import '../../../data/repositories/trip_repository.dart';
@@ -190,6 +191,22 @@ class _CustomerActiveTripScreenState extends State<CustomerActiveTripScreen> {
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(height: 16),
+
+              // Goong Interactive Live Map
+              GoongRouteMapView(
+                pickupLat: trip.pickupLat,
+                pickupLng: trip.pickupLng,
+                pickupTitle: trip.pickupAddress,
+                dropoffLat: trip.dropoffLat,
+                dropoffLng: trip.dropoffLng,
+                dropoffTitle: trip.dropoffAddress,
+                driverLat: driver?.currentLat ?? (trip.pickupLat + 0.002),
+                driverLng: driver?.currentLng ?? (trip.pickupLng + 0.002),
+                distanceText: '${trip.estimatedDistanceKm} km',
+                durationText: '${trip.estimatedDurationMinutes} phút',
+                height: 200,
               ),
               const SizedBox(height: 16),
 

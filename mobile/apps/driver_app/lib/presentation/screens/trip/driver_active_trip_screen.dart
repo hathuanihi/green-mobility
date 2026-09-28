@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:core_map/core_map.dart';
 import 'package:core_model/core_model.dart';
 import 'package:core_ui/core_ui.dart';
 import '../../../data/repositories/driver_repository.dart';
@@ -243,6 +244,22 @@ class _DriverActiveTripScreenState extends State<DriverActiveTripScreen> {
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(height: 16),
+
+              // Goong Driver Navigation Map
+              GoongRouteMapView(
+                pickupLat: 10.776530,
+                pickupLng: 106.700981,
+                pickupTitle: trip.pickupAddress,
+                dropoffLat: 10.870020,
+                dropoffLng: 106.803054,
+                dropoffTitle: trip.dropoffAddress,
+                driverLat: 10.778000,
+                driverLng: 106.702000,
+                distanceText: '${trip.estimatedDistanceKm} km',
+                durationText: '32 phút',
+                height: 200,
               ),
               const SizedBox(height: 16),
 
