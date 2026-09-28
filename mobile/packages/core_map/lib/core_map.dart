@@ -1,5 +1,9 @@
 library core_map;
 
+export 'src/goong_config.dart';
+export 'src/polyline_decoder.dart';
+export 'src/goong_route_map_view.dart';
+
 class MapDefaults {
   // Tọa độ mặc định: Trung tâm Quận 1, TP. Hồ Chí Minh
   static const double defaultLat = 10.776530;
@@ -23,6 +27,15 @@ class PresetLocation {
     required this.lng,
     this.co2EstimateGrams = 800.0,
   });
+
+  static const PresetLocation nhaHatThanhPho = PresetLocation(
+    id: 'nha_hat_tp',
+    title: 'Nhà hát Thành phố',
+    address: 'Nhà hát Thành phố, 07 Công Trường Lam Sơn, Bến Nghé, Quận 1',
+    lat: 10.776530,
+    lng: 106.700981,
+    co2EstimateGrams: 760,
+  );
 
   static const PresetLocation benThanh = PresetLocation(
     id: 'ben_thanh',
@@ -60,10 +73,22 @@ class PresetLocation {
     co2EstimateGrams: 1250,
   );
 
+  static const PresetLocation uit = PresetLocation(
+    id: 'dh_cntt',
+    title: 'Trường ĐH Công nghệ Thông tin (UIT)',
+    address: 'Trường ĐH Công nghệ Thông tin, Linh Trung, TP. Thủ Đức',
+    lat: 10.870020,
+    lng: 106.803054,
+    co2EstimateGrams: 1080,
+  );
+
   static const List<PresetLocation> all = [
+    nhaHatThanhPho,
     benThanh,
     landmark81,
     bitexco,
     tanSonNhat,
+    uit,
   ];
 }
+

@@ -190,6 +190,21 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Goong Interactive Route Map Preview
+              GoongRouteMapView(
+                pickupLat: _selectedPickup.lat,
+                pickupLng: _selectedPickup.lng,
+                pickupTitle: _selectedPickup.title,
+                dropoffLat: _selectedDropoff.lat,
+                dropoffLng: _selectedDropoff.lng,
+                dropoffTitle: _selectedDropoff.title,
+                encodedPolyline: _currentEstimate?.routePolyline,
+                distanceText: _currentEstimate != null ? '${_currentEstimate!.distanceKm} km' : '5.4 km',
+                durationText: _currentEstimate != null ? '${_currentEstimate!.durationMinutes} phút' : '14 phút',
+                height: 200,
+              ),
+              const SizedBox(height: 16),
+
               // Origin & Destination Inputs Card
               Container(
                 padding: const EdgeInsets.all(18),

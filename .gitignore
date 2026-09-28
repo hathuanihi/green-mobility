@@ -50,6 +50,7 @@ mobile/**/ios/Flutter/Flutter.podspec
 .env
 .env.local
 .env.*.local
+dart-define.env
 *.pem
 *.key
 
