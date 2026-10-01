@@ -24,6 +24,10 @@ public class RabbitMQConfig {
 
     public static final String ROUTING_KEY_TRIP_DISPATCHED = "trip.event.dispatched";
 
+    // Sprint 3: Trip execution lifecycle events
+    public static final String QUEUE_TRIP_COMPLETED = "q.trip.status.completed";
+    public static final String ROUTING_KEY_TRIP_COMPLETED = "trip.event.completed";
+
     @Bean
     public TopicExchange greenMobilityExchange() {
         return new TopicExchange(EXCHANGE_NAME, true, false);
@@ -57,6 +61,17 @@ public class RabbitMQConfig {
     @Bean
     public Binding tripCancelledBinding(Queue tripCancelledQueue, TopicExchange greenMobilityExchange) {
         return BindingBuilder.bind(tripCancelledQueue).to(greenMobilityExchange).with(ROUTING_KEY_TRIP_CANCELLED);
+    }
+
+    // Sprint 3: Trip completed queue (consumed by Sprint 4 Carbon Engine & Sprint 5 Payment)
+    @Bean
+    public Queue tripCompletedQueue() {
+        return QueueBuilder.durable(QUEUE_TRIP_COMPLETED).build();
+    }
+
+    @Bean
+    public Binding tripCompletedBinding(Queue tripCompletedQueue, TopicExchange greenMobilityExchange) {
+        return BindingBuilder.bind(tripCompletedQueue).to(greenMobilityExchange).with(ROUTING_KEY_TRIP_COMPLETED);
     }
 
     @Bean

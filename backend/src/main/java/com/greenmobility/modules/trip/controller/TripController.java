@@ -2,11 +2,7 @@ package com.greenmobility.modules.trip.controller;
 
 import com.greenmobility.common.response.ApiResponse;
 import com.greenmobility.common.security.UserPrincipal;
-import com.greenmobility.modules.trip.dto.TripCancelRequest;
-import com.greenmobility.modules.trip.dto.TripEstimateRequest;
-import com.greenmobility.modules.trip.dto.TripEstimateResponse;
-import com.greenmobility.modules.trip.dto.TripRequestDto;
-import com.greenmobility.modules.trip.dto.TripResponseDto;
+import com.greenmobility.modules.trip.dto.*;
 import com.greenmobility.modules.trip.service.TripService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -64,5 +60,25 @@ public class TripController {
         String reason = request != null ? request.getCancelReason() : "Người dùng hủy chuyến";
         TripResponseDto response = tripService.cancelTrip(tripId, currentUser.getId(), reason);
         return ResponseEntity.ok(ApiResponse.ok("Đã hủy cuốc xe thành công", response));
+    }
+
+    // ==========================================
+    // SPRINT 3 PHASE 1: TRACKING & ROUTE QUERIES
+    // ==========================================
+
+    @Operation(summary = "Xem trạng thái tracking thời gian thực của chuyến đi", description = "Khách hàng tra cứu trạng thái tracking (tọa độ tài xế, ETA, phase) từ Redis cache khi reconnect hoặc WebSocket bị gián đoạn")
+    @GetMapping("/{tripId}/tracking")
+    public ResponseEntity<ApiResponse<TripTrackingDto>> getTripTracking(
+            @PathVariable UUID tripId) {
+        TripTrackingDto response = tripService.getTripTrackingState(tripId);
+        return ResponseEntity.ok(ApiResponse.ok("Lấy trạng thái tracking chuyến xe thành công", response));
+    }
+
+    @Operation(summary = "Lấy lộ trình định tuyến hiện tại của chuyến đi", description = "Trả về polyline và các bước dẫn đường (turn-by-turn) của giai đoạn hiện tại (đến điểm đón hoặc đến điểm trả)")
+    @GetMapping("/{tripId}/route")
+    public ResponseEntity<ApiResponse<TripRouteResponseDto>> getTripRoute(
+            @PathVariable UUID tripId) {
+        TripRouteResponseDto response = tripService.getTripRoute(tripId);
+        return ResponseEntity.ok(ApiResponse.ok("Lấy lộ trình chuyến xe thành công", response));
     }
 }
