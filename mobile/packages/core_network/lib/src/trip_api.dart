@@ -60,4 +60,27 @@ class TripApi {
     }
     throw Exception('Hủy chuyến xe thất bại');
   }
+
+  /// Tra cứu trạng thái tracking trực tiếp qua REST (Fallback khi mất WebSocket)
+  Future<TripTrackingModel> getTracking(String tripId) async {
+    final response = await apiClient.dio.get('/trips/$tripId/tracking');
+
+    final responseData = response.data;
+    if (responseData is Map<String, dynamic> && responseData['data'] != null) {
+      return TripTrackingModel.fromJson(responseData['data'] as Map<String, dynamic>);
+    }
+    throw Exception('Không tìm thấy thông tin tracking chuyến xe');
+  }
+
+  /// Lấy lộ trình định tuyến hiện tại của chuyến xe (polyline & turn-by-turn steps)
+  Future<RoutingResultModel> getRoute(String tripId) async {
+    final response = await apiClient.dio.get('/trips/$tripId/route');
+
+    final responseData = response.data;
+    if (responseData is Map<String, dynamic> && responseData['data'] != null) {
+      return RoutingResultModel.fromJson(responseData['data'] as Map<String, dynamic>);
+    }
+    throw Exception('Không thể tải lộ trình chuyến xe');
+  }
 }
+

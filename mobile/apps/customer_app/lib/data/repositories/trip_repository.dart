@@ -21,4 +21,13 @@ class TripRepository {
   Future<TripModel> cancelTrip(String tripId, {String? reason}) async {
     return await tripApi.cancelTrip(tripId, reason: reason);
   }
+
+  Future<TripTrackingModel> getTracking(String tripId) async {
+    return await tripApi.getTracking(tripId);
+  }
+
+  Future<RoutingResultModel> getRoute(String tripId) async {
+    return await tripApi.getRoute(tripId);
+  }
 }
+

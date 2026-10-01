@@ -175,4 +175,75 @@ class DriverApi {
   Future<void> endShift() async {
     await apiClient.dio.post('/driver/shift/end');
   }
+
+  /// Tài xế bắt đầu di chuyển đón khách
+  Future<DriverArrivingModel> startArriving(String tripId) async {
+    final response = await apiClient.dio.post('/driver/trips/$tripId/start-arriving');
+    final responseData = response.data;
+    if (responseData is Map<String, dynamic> && responseData['data'] != null) {
+      return DriverArrivingModel.fromJson(responseData['data'] as Map<String, dynamic>);
+    }
+    throw Exception('Không thể bắt đầu di chuyển đón khách');
+  }
+
+  /// Tài xế xác nhận đã đến điểm đón (Arrived at Pickup)
+  Future<DriverArriveModel> arriveAtPickup(String tripId) async {
+    final response = await apiClient.dio.post('/driver/trips/$tripId/arrive');
+    final responseData = response.data;
+    if (responseData is Map<String, dynamic> && responseData['data'] != null) {
+      return DriverArriveModel.fromJson(responseData['data'] as Map<String, dynamic>);
+    }
+    throw Exception('Không thể xác nhận đã đến điểm đón');
+  }
+
+  /// Tài xế bắt đầu chuyến đi khi khách đã lên xe
+  Future<DriverStartTripModel> startTrip(String tripId) async {
+    final response = await apiClient.dio.post('/driver/trips/$tripId/start-trip');
+    final responseData = response.data;
+    if (responseData is Map<String, dynamic> && responseData['data'] != null) {
+      return DriverStartTripModel.fromJson(responseData['data'] as Map<String, dynamic>);
+    }
+    throw Exception('Không thể bắt đầu chuyến đi');
+  }
+
+  /// Tài xế hoàn thành chuyến đi tại điểm trả
+  Future<TripCompleteSummaryModel> completeTrip(String tripId) async {
+    final response = await apiClient.dio.post('/driver/trips/$tripId/complete');
+    final responseData = response.data;
+    if (responseData is Map<String, dynamic> && responseData['data'] != null) {
+      return TripCompleteSummaryModel.fromJson(responseData['data'] as Map<String, dynamic>);
+    }
+    throw Exception('Không thể hoàn thành chuyến đi');
+  }
+
+  /// Tài xế hủy chuyến xe đang đón/chờ khách
+  Future<DriverCancelModel> cancelTrip(String tripId, {String? reason}) async {
+    final response = await apiClient.dio.post(
+      '/driver/trips/$tripId/cancel',
+      data: {
+        'cancelReason': reason ?? 'Tài xế hủy cuốc',
+      },
+    );
+    final responseData = response.data;
+    if (responseData is Map<String, dynamic> && responseData['data'] != null) {
+      return DriverCancelModel.fromJson(responseData['data'] as Map<String, dynamic>);
+    }
+    throw Exception('Không thể hủy chuyến đi');
+  }
+
+  /// Đồng bộ offline batch các điểm GPS lên hệ thống telemetry
+  Future<Map<String, dynamic>> syncGpsBatch(String tripId, List<GpsPointModel> points) async {
+    final response = await apiClient.dio.post(
+      '/driver/trips/$tripId/sync-gps-batch',
+      data: {
+        'points': points.map((p) => p.toJson()).toList(),
+      },
+    );
+    final responseData = response.data;
+    if (responseData is Map<String, dynamic> && responseData['data'] != null) {
+      return responseData['data'] as Map<String, dynamic>;
+    }
+    return {'syncedPoints': points.length};
+  }
 }
+

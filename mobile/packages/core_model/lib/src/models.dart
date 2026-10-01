@@ -748,3 +748,683 @@ class DriverLocationPingModel {
     return map;
   }
 }
+
+class DriverLocationModel {
+  final String driverId;
+  final double lat;
+  final double lng;
+  final double? bearing;
+  final double? speedKmh;
+  final int? batteryPercent;
+  final int? etaSeconds;
+  final int? distanceRemainingM;
+  final String? phase;
+  final String? timestamp;
+
+  const DriverLocationModel({
+    required this.driverId,
+    required this.lat,
+    required this.lng,
+    this.bearing,
+    this.speedKmh,
+    this.batteryPercent,
+    this.etaSeconds,
+    this.distanceRemainingM,
+    this.phase,
+    this.timestamp,
+  });
+
+  factory DriverLocationModel.fromJson(Map<String, dynamic> json) {
+    return DriverLocationModel(
+      driverId: json['driverId']?.toString() ?? '',
+      lat: (json['lat'] is num)
+          ? (json['lat'] as num).toDouble()
+          : double.tryParse(json['lat']?.toString() ?? '0') ?? 0.0,
+      lng: (json['lng'] is num)
+          ? (json['lng'] as num).toDouble()
+          : double.tryParse(json['lng']?.toString() ?? '0') ?? 0.0,
+      bearing: (json['bearing'] is num)
+          ? (json['bearing'] as num).toDouble()
+          : double.tryParse(json['bearing']?.toString() ?? ''),
+      speedKmh: (json['speedKmh'] is num)
+          ? (json['speedKmh'] as num).toDouble()
+          : double.tryParse(json['speedKmh']?.toString() ?? ''),
+      batteryPercent: (json['batteryPercent'] is num)
+          ? (json['batteryPercent'] as num).toInt()
+          : int.tryParse(json['batteryPercent']?.toString() ?? ''),
+      etaSeconds: (json['etaSeconds'] is num)
+          ? (json['etaSeconds'] as num).toInt()
+          : int.tryParse(json['etaSeconds']?.toString() ?? ''),
+      distanceRemainingM: (json['distanceRemainingM'] is num)
+          ? (json['distanceRemainingM'] as num).toInt()
+          : int.tryParse(json['distanceRemainingM']?.toString() ?? ''),
+      phase: json['phase']?.toString(),
+      timestamp: json['timestamp']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'driverId': driverId,
+    'lat': lat,
+    'lng': lng,
+    if (bearing != null) 'bearing': bearing,
+    if (speedKmh != null) 'speedKmh': speedKmh,
+    if (batteryPercent != null) 'batteryPercent': batteryPercent,
+    if (etaSeconds != null) 'etaSeconds': etaSeconds,
+    if (distanceRemainingM != null) 'distanceRemainingM': distanceRemainingM,
+    if (phase != null) 'phase': phase,
+    if (timestamp != null) 'timestamp': timestamp,
+  };
+}
+
+class RoutingStepModel {
+  final String instruction;
+  final int distanceM;
+  final int durationS;
+  final String? maneuver;
+  final List<double>? startLocation;
+
+  const RoutingStepModel({
+    required this.instruction,
+    this.distanceM = 0,
+    this.durationS = 0,
+    this.maneuver,
+    this.startLocation,
+  });
+
+  factory RoutingStepModel.fromJson(Map<String, dynamic> json) {
+    List<double>? loc;
+    if (json['startLocation'] is List) {
+      loc = (json['startLocation'] as List)
+          .map((e) => (e is num) ? e.toDouble() : double.tryParse(e.toString()) ?? 0.0)
+          .toList();
+    }
+    return RoutingStepModel(
+      instruction: json['instruction']?.toString() ?? '',
+      distanceM: (json['distanceM'] is num)
+          ? (json['distanceM'] as num).toInt()
+          : int.tryParse(json['distanceM']?.toString() ?? '0') ?? 0,
+      durationS: (json['durationS'] is num)
+          ? (json['durationS'] as num).toInt()
+          : int.tryParse(json['durationS']?.toString() ?? '0') ?? 0,
+      maneuver: json['maneuver']?.toString(),
+      startLocation: loc,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'instruction': instruction,
+    'distanceM': distanceM,
+    'durationS': durationS,
+    if (maneuver != null) 'maneuver': maneuver,
+    if (startLocation != null) 'startLocation': startLocation,
+  };
+}
+
+class RoutingResultModel {
+  final int distanceM;
+  final int durationS;
+  final String polyline;
+  final List<RoutingStepModel> steps;
+
+  const RoutingResultModel({
+    this.distanceM = 0,
+    this.durationS = 0,
+    this.polyline = '',
+    this.steps = const [],
+  });
+
+  factory RoutingResultModel.fromJson(Map<String, dynamic> json) {
+    List<RoutingStepModel> parsedSteps = [];
+    if (json['steps'] is List) {
+      parsedSteps = (json['steps'] as List)
+          .map((s) => RoutingStepModel.fromJson(s as Map<String, dynamic>))
+          .toList();
+    }
+    return RoutingResultModel(
+      distanceM: (json['distanceM'] is num)
+          ? (json['distanceM'] as num).toInt()
+          : int.tryParse(json['distanceM']?.toString() ?? '0') ?? 0,
+      durationS: (json['durationS'] is num)
+          ? (json['durationS'] as num).toInt()
+          : int.tryParse(json['durationS']?.toString() ?? '0') ?? 0,
+      polyline: json['polyline']?.toString() ?? '',
+      steps: parsedSteps,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'distanceM': distanceM,
+    'durationS': durationS,
+    'polyline': polyline,
+    'steps': steps.map((s) => s.toJson()).toList(),
+  };
+}
+
+class LocationPointModel {
+  final String address;
+  final double lat;
+  final double lng;
+
+  const LocationPointModel({
+    this.address = '',
+    this.lat = 0.0,
+    this.lng = 0.0,
+  });
+
+  factory LocationPointModel.fromJson(Map<String, dynamic> json) {
+    return LocationPointModel(
+      address: json['address']?.toString() ?? '',
+      lat: (json['lat'] is num)
+          ? (json['lat'] as num).toDouble()
+          : double.tryParse(json['lat']?.toString() ?? '0') ?? 0.0,
+      lng: (json['lng'] is num)
+          ? (json['lng'] as num).toDouble()
+          : double.tryParse(json['lng']?.toString() ?? '0') ?? 0.0,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'address': address,
+    'lat': lat,
+    'lng': lng,
+  };
+}
+
+class TripTrackingDataModel {
+  final double? driverLat;
+  final double? driverLng;
+  final double? bearing;
+  final double? speedKmh;
+  final int? batteryPercent;
+  final int? etaSeconds;
+  final int? distanceRemainingM;
+  final String? routePolyline;
+  final String? phase;
+  final String? lastUpdatedAt;
+
+  const TripTrackingDataModel({
+    this.driverLat,
+    this.driverLng,
+    this.bearing,
+    this.speedKmh,
+    this.batteryPercent,
+    this.etaSeconds,
+    this.distanceRemainingM,
+    this.routePolyline,
+    this.phase,
+    this.lastUpdatedAt,
+  });
+
+  factory TripTrackingDataModel.fromJson(Map<String, dynamic> json) {
+    return TripTrackingDataModel(
+      driverLat: (json['driverLat'] is num)
+          ? (json['driverLat'] as num).toDouble()
+          : double.tryParse(json['driverLat']?.toString() ?? ''),
+      driverLng: (json['driverLng'] is num)
+          ? (json['driverLng'] as num).toDouble()
+          : double.tryParse(json['driverLng']?.toString() ?? ''),
+      bearing: (json['bearing'] is num)
+          ? (json['bearing'] as num).toDouble()
+          : double.tryParse(json['bearing']?.toString() ?? ''),
+      speedKmh: (json['speedKmh'] is num)
+          ? (json['speedKmh'] as num).toDouble()
+          : double.tryParse(json['speedKmh']?.toString() ?? ''),
+      batteryPercent: (json['batteryPercent'] is num)
+          ? (json['batteryPercent'] as num).toInt()
+          : int.tryParse(json['batteryPercent']?.toString() ?? ''),
+      etaSeconds: (json['etaSeconds'] is num)
+          ? (json['etaSeconds'] as num).toInt()
+          : int.tryParse(json['etaSeconds']?.toString() ?? ''),
+      distanceRemainingM: (json['distanceRemainingM'] is num)
+          ? (json['distanceRemainingM'] as num).toInt()
+          : int.tryParse(json['distanceRemainingM']?.toString() ?? ''),
+      routePolyline: json['routePolyline']?.toString(),
+      phase: json['phase']?.toString(),
+      lastUpdatedAt: json['lastUpdatedAt']?.toString(),
+    );
+  }
+}
+
+class TripTrackingModel {
+  final String tripId;
+  final String tripCode;
+  final String status;
+  final DriverSummaryModel? driver;
+  final TripTrackingDataModel? tracking;
+  final LocationPointModel? pickup;
+  final LocationPointModel? dropoff;
+  final String? timestamp;
+
+  const TripTrackingModel({
+    required this.tripId,
+    required this.tripCode,
+    required this.status,
+    this.driver,
+    this.tracking,
+    this.pickup,
+    this.dropoff,
+    this.timestamp,
+  });
+
+  factory TripTrackingModel.fromJson(Map<String, dynamic> json) {
+    return TripTrackingModel(
+      tripId: json['tripId']?.toString() ?? '',
+      tripCode: json['tripCode']?.toString() ?? '',
+      status: json['status']?.toString() ?? '',
+      driver: json['driver'] != null
+          ? DriverSummaryModel.fromJson(json['driver'] as Map<String, dynamic>)
+          : null,
+      tracking: json['tracking'] != null
+          ? TripTrackingDataModel.fromJson(json['tracking'] as Map<String, dynamic>)
+          : null,
+      pickup: json['pickup'] != null
+          ? LocationPointModel.fromJson(json['pickup'] as Map<String, dynamic>)
+          : null,
+      dropoff: json['dropoff'] != null
+          ? LocationPointModel.fromJson(json['dropoff'] as Map<String, dynamic>)
+          : null,
+      timestamp: json['timestamp']?.toString(),
+    );
+  }
+}
+
+class DriverEarningsModel {
+  final double grossAmountVnd;
+  final double platformFeeVnd;
+  final double netEarningsVnd;
+
+  const DriverEarningsModel({
+    this.grossAmountVnd = 0.0,
+    this.platformFeeVnd = 0.0,
+    this.netEarningsVnd = 0.0,
+  });
+
+  factory DriverEarningsModel.fromJson(Map<String, dynamic> json) {
+    return DriverEarningsModel(
+      grossAmountVnd: (json['grossAmountVnd'] is num)
+          ? (json['grossAmountVnd'] as num).toDouble()
+          : double.tryParse(json['grossAmountVnd']?.toString() ?? '0') ?? 0.0,
+      platformFeeVnd: (json['platformFeeVnd'] is num)
+          ? (json['platformFeeVnd'] as num).toDouble()
+          : double.tryParse(json['platformFeeVnd']?.toString() ?? '0') ?? 0.0,
+      netEarningsVnd: (json['netEarningsVnd'] is num)
+          ? (json['netEarningsVnd'] as num).toDouble()
+          : double.tryParse(json['netEarningsVnd']?.toString() ?? '0') ?? 0.0,
+    );
+  }
+}
+
+class TripSummaryModel {
+  final String tripCode;
+  final String pickupAddress;
+  final String dropoffAddress;
+  final int estimatedDistanceM;
+  final int actualDistanceM;
+  final int estimatedDurationS;
+  final int actualDurationS;
+  final double fareAmountVnd;
+  final double finalAmountVnd;
+  final String paymentMethod;
+  final String paymentStatus;
+  final double co2SavedGrams;
+  final String customerName;
+  final String driverName;
+
+  const TripSummaryModel({
+    this.tripCode = '',
+    this.pickupAddress = '',
+    this.dropoffAddress = '',
+    this.estimatedDistanceM = 0,
+    this.actualDistanceM = 0,
+    this.estimatedDurationS = 0,
+    this.actualDurationS = 0,
+    this.fareAmountVnd = 0.0,
+    this.finalAmountVnd = 0.0,
+    this.paymentMethod = 'CASH',
+    this.paymentStatus = 'PAID',
+    this.co2SavedGrams = 0.0,
+    this.customerName = '',
+    this.driverName = '',
+  });
+
+  factory TripSummaryModel.fromJson(Map<String, dynamic> json) {
+    return TripSummaryModel(
+      tripCode: json['tripCode']?.toString() ?? '',
+      pickupAddress: json['pickupAddress']?.toString() ?? '',
+      dropoffAddress: json['dropoffAddress']?.toString() ?? '',
+      estimatedDistanceM: (json['estimatedDistanceM'] is num)
+          ? (json['estimatedDistanceM'] as num).toInt()
+          : int.tryParse(json['estimatedDistanceM']?.toString() ?? '0') ?? 0,
+      actualDistanceM: (json['actualDistanceM'] is num)
+          ? (json['actualDistanceM'] as num).toInt()
+          : int.tryParse(json['actualDistanceM']?.toString() ?? '0') ?? 0,
+      estimatedDurationS: (json['estimatedDurationS'] is num)
+          ? (json['estimatedDurationS'] as num).toInt()
+          : int.tryParse(json['estimatedDurationS']?.toString() ?? '0') ?? 0,
+      actualDurationS: (json['actualDurationS'] is num)
+          ? (json['actualDurationS'] as num).toInt()
+          : int.tryParse(json['actualDurationS']?.toString() ?? '0') ?? 0,
+      fareAmountVnd: (json['fareAmountVnd'] is num)
+          ? (json['fareAmountVnd'] as num).toDouble()
+          : double.tryParse(json['fareAmountVnd']?.toString() ?? '0') ?? 0.0,
+      finalAmountVnd: (json['finalAmountVnd'] is num)
+          ? (json['finalAmountVnd'] as num).toDouble()
+          : double.tryParse(json['finalAmountVnd']?.toString() ?? '0') ?? 0.0,
+      paymentMethod: json['paymentMethod']?.toString() ?? 'CASH',
+      paymentStatus: json['paymentStatus']?.toString() ?? 'PAID',
+      co2SavedGrams: (json['co2SavedGrams'] is num)
+          ? (json['co2SavedGrams'] as num).toDouble()
+          : double.tryParse(json['co2SavedGrams']?.toString() ?? '0') ?? 0.0,
+      customerName: json['customerName']?.toString() ?? '',
+      driverName: json['driverName']?.toString() ?? '',
+    );
+  }
+}
+
+class TripCompleteSummaryModel {
+  final String tripId;
+  final String tripCode;
+  final String status;
+  final String? completedAt;
+  final int actualDistanceM;
+  final int actualDurationS;
+  final double co2SavedGrams;
+  final TripSummaryModel? tripSummary;
+  final DriverEarningsModel? driverEarnings;
+
+  const TripCompleteSummaryModel({
+    required this.tripId,
+    required this.tripCode,
+    required this.status,
+    this.completedAt,
+    this.actualDistanceM = 0,
+    this.actualDurationS = 0,
+    this.co2SavedGrams = 0.0,
+    this.tripSummary,
+    this.driverEarnings,
+  });
+
+  factory TripCompleteSummaryModel.fromJson(Map<String, dynamic> json) {
+    return TripCompleteSummaryModel(
+      tripId: json['tripId']?.toString() ?? '',
+      tripCode: json['tripCode']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'COMPLETED',
+      completedAt: json['completedAt']?.toString(),
+      actualDistanceM: (json['actualDistanceM'] is num)
+          ? (json['actualDistanceM'] as num).toInt()
+          : int.tryParse(json['actualDistanceM']?.toString() ?? '0') ?? 0,
+      actualDurationS: (json['actualDurationS'] is num)
+          ? (json['actualDurationS'] as num).toInt()
+          : int.tryParse(json['actualDurationS']?.toString() ?? '0') ?? 0,
+      co2SavedGrams: (json['co2SavedGrams'] is num)
+          ? (json['co2SavedGrams'] as num).toDouble()
+          : double.tryParse(json['co2SavedGrams']?.toString() ?? '0') ?? 0.0,
+      tripSummary: json['tripSummary'] != null
+          ? TripSummaryModel.fromJson(json['tripSummary'] as Map<String, dynamic>)
+          : null,
+      driverEarnings: json['driverEarnings'] != null
+          ? DriverEarningsModel.fromJson(json['driverEarnings'] as Map<String, dynamic>)
+          : null,
+    );
+  }
+}
+
+class CustomerSummaryModel {
+  final String fullName;
+  final String phoneNumber;
+
+  const CustomerSummaryModel({
+    this.fullName = '',
+    this.phoneNumber = '',
+  });
+
+  factory CustomerSummaryModel.fromJson(Map<String, dynamic> json) {
+    return CustomerSummaryModel(
+      fullName: json['fullName']?.toString() ?? '',
+      phoneNumber: json['phoneNumber']?.toString() ?? '',
+    );
+  }
+}
+
+class DriverArrivingModel {
+  final String tripId;
+  final String status;
+  final RoutingResultModel? routing;
+  final LocationPointModel? pickup;
+  final CustomerSummaryModel? customer;
+
+  const DriverArrivingModel({
+    required this.tripId,
+    required this.status,
+    this.routing,
+    this.pickup,
+    this.customer,
+  });
+
+  factory DriverArrivingModel.fromJson(Map<String, dynamic> json) {
+    return DriverArrivingModel(
+      tripId: json['tripId']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'DRIVER_ARRIVING',
+      routing: json['routing'] != null
+          ? RoutingResultModel.fromJson(json['routing'] as Map<String, dynamic>)
+          : null,
+      pickup: json['pickup'] != null
+          ? LocationPointModel.fromJson(json['pickup'] as Map<String, dynamic>)
+          : null,
+      customer: json['customer'] != null
+          ? CustomerSummaryModel.fromJson(json['customer'] as Map<String, dynamic>)
+          : null,
+    );
+  }
+}
+
+class DriverArriveModel {
+  final String tripId;
+  final String status;
+  final String? arrivedAt;
+  final String customerName;
+  final int countdownSeconds;
+
+  const DriverArriveModel({
+    required this.tripId,
+    required this.status,
+    this.arrivedAt,
+    this.customerName = '',
+    this.countdownSeconds = 300,
+  });
+
+  factory DriverArriveModel.fromJson(Map<String, dynamic> json) {
+    return DriverArriveModel(
+      tripId: json['tripId']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'ARRIVED',
+      arrivedAt: json['arrivedAt']?.toString(),
+      customerName: json['customerName']?.toString() ?? '',
+      countdownSeconds: (json['countdownSeconds'] is num)
+          ? (json['countdownSeconds'] as num).toInt()
+          : int.tryParse(json['countdownSeconds']?.toString() ?? '300') ?? 300,
+    );
+  }
+}
+
+class DriverStartTripModel {
+  final String tripId;
+  final String status;
+  final String? startedAt;
+  final RoutingResultModel? routing;
+  final LocationPointModel? dropoff;
+
+  const DriverStartTripModel({
+    required this.tripId,
+    required this.status,
+    this.startedAt,
+    this.routing,
+    this.dropoff,
+  });
+
+  factory DriverStartTripModel.fromJson(Map<String, dynamic> json) {
+    return DriverStartTripModel(
+      tripId: json['tripId']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'IN_TRIP',
+      startedAt: json['startedAt']?.toString(),
+      routing: json['routing'] != null
+          ? RoutingResultModel.fromJson(json['routing'] as Map<String, dynamic>)
+          : null,
+      dropoff: json['dropoff'] != null
+          ? LocationPointModel.fromJson(json['dropoff'] as Map<String, dynamic>)
+          : null,
+    );
+  }
+}
+
+class DriverCancelModel {
+  final String tripId;
+  final String status;
+  final String? cancelledBy;
+  final String? cancelReason;
+
+  const DriverCancelModel({
+    required this.tripId,
+    required this.status,
+    this.cancelledBy,
+    this.cancelReason,
+  });
+
+  factory DriverCancelModel.fromJson(Map<String, dynamic> json) {
+    return DriverCancelModel(
+      tripId: json['tripId']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'CANCELLED',
+      cancelledBy: json['cancelledBy']?.toString(),
+      cancelReason: json['cancelReason']?.toString(),
+    );
+  }
+}
+
+class TripStatusUpdateModel {
+  final String tripId;
+  final String status;
+  final String? message;
+  final DriverSummaryModel? driver;
+  final String? cancelledBy;
+  final String? timestamp;
+
+  const TripStatusUpdateModel({
+    required this.tripId,
+    required this.status,
+    this.message,
+    this.driver,
+    this.cancelledBy,
+    this.timestamp,
+  });
+
+  factory TripStatusUpdateModel.fromJson(Map<String, dynamic> json) {
+    return TripStatusUpdateModel(
+      tripId: json['tripId']?.toString() ?? '',
+      status: json['status']?.toString() ?? '',
+      message: json['message']?.toString(),
+      driver: json['driver'] != null
+          ? DriverSummaryModel.fromJson(json['driver'] as Map<String, dynamic>)
+          : null,
+      cancelledBy: json['cancelledBy']?.toString(),
+      timestamp: json['timestamp']?.toString(),
+    );
+  }
+}
+
+class DriverLocationUpdatePayload {
+  final String tripId;
+  final double lat;
+  final double lng;
+  final double? speedKmh;
+  final double? bearing;
+  final double? altitude;
+  final double? accuracy;
+  final int? batteryPercent;
+  final bool isMockLocation;
+  final String? timestamp;
+
+  const DriverLocationUpdatePayload({
+    required this.tripId,
+    required this.lat,
+    required this.lng,
+    this.speedKmh,
+    this.bearing,
+    this.altitude,
+    this.accuracy,
+    this.batteryPercent,
+    this.isMockLocation = false,
+    this.timestamp,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'tripId': tripId,
+    'lat': lat,
+    'lng': lng,
+    if (speedKmh != null) 'speedKmh': speedKmh,
+    if (bearing != null) 'bearing': bearing,
+    if (altitude != null) 'altitude': altitude,
+    if (accuracy != null) 'accuracy': accuracy,
+    if (batteryPercent != null) 'batteryPercent': batteryPercent,
+    'isMockLocation': isMockLocation,
+    'timestamp': timestamp ?? DateTime.now().toUtc().toIso8601String(),
+  };
+}
+
+class GpsPointModel {
+  final double lat;
+  final double lng;
+  final double? speedKmh;
+  final double? bearing;
+  final double? accuracy;
+  final int? batteryPercent;
+  final bool isMockLocation;
+  final String? timestamp;
+
+  const GpsPointModel({
+    required this.lat,
+    required this.lng,
+    this.speedKmh,
+    this.bearing,
+    this.accuracy,
+    this.batteryPercent,
+    this.isMockLocation = false,
+    this.timestamp,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'lat': lat,
+    'lng': lng,
+    if (speedKmh != null) 'speedKmh': speedKmh,
+    if (bearing != null) 'bearing': bearing,
+    if (accuracy != null) 'accuracy': accuracy,
+    if (batteryPercent != null) 'batteryPercent': batteryPercent,
+    'isMockLocation': isMockLocation,
+    'timestamp': timestamp ?? DateTime.now().toUtc().toIso8601String(),
+  };
+
+  factory GpsPointModel.fromJson(Map<String, dynamic> json) {
+    return GpsPointModel(
+      lat: (json['lat'] is num)
+          ? (json['lat'] as num).toDouble()
+          : double.tryParse(json['lat']?.toString() ?? '0') ?? 0.0,
+      lng: (json['lng'] is num)
+          ? (json['lng'] as num).toDouble()
+          : double.tryParse(json['lng']?.toString() ?? '0') ?? 0.0,
+      speedKmh: (json['speedKmh'] is num)
+          ? (json['speedKmh'] as num).toDouble()
+          : double.tryParse(json['speedKmh']?.toString() ?? ''),
+      bearing: (json['bearing'] is num)
+          ? (json['bearing'] as num).toDouble()
+          : double.tryParse(json['bearing']?.toString() ?? ''),
+      accuracy: (json['accuracy'] is num)
+          ? (json['accuracy'] as num).toDouble()
+          : double.tryParse(json['accuracy']?.toString() ?? ''),
+      batteryPercent: (json['batteryPercent'] is num)
+          ? (json['batteryPercent'] as num).toInt()
+          : int.tryParse(json['batteryPercent']?.toString() ?? ''),
+      isMockLocation: json['isMockLocation'] == true,
+      timestamp: json['timestamp']?.toString(),
+    );
+  }
+}
+

@@ -7,6 +7,8 @@ export 'src/widgets/green_text_field.dart';
 export 'src/widgets/green_card.dart';
 export 'src/widgets/status_badge.dart';
 export 'src/widgets/document_picker_tile.dart';
+export 'src/widgets/green_swipe_button.dart';
+export 'src/widgets/confetti_celebration.dart';
 export 'src/utils/formatters.dart';
 
 class GreenColors {

@@ -41,5 +41,30 @@ class DriverRepository {
   Future<void> endShift() async {
     await driverApi.endShift();
   }
+
+  Future<DriverArrivingModel> startArriving(String tripId) async {
+    return await driverApi.startArriving(tripId);
+  }
+
+  Future<DriverArriveModel> arriveAtPickup(String tripId) async {
+    return await driverApi.arriveAtPickup(tripId);
+  }
+
+  Future<DriverStartTripModel> startTrip(String tripId) async {
+    return await driverApi.startTrip(tripId);
+  }
+
+  Future<TripCompleteSummaryModel> completeTrip(String tripId) async {
+    return await driverApi.completeTrip(tripId);
+  }
+
+  Future<DriverCancelModel> cancelTrip(String tripId, {String? reason}) async {
+    return await driverApi.cancelTrip(tripId, reason: reason);
+  }
+
+  Future<Map<String, dynamic>> syncGpsBatch(String tripId, List<GpsPointModel> points) async {
+    return await driverApi.syncGpsBatch(tripId, points);
+  }
 }
+
 
