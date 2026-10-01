@@ -335,11 +335,152 @@ public class TripService {
                 .toList();
     }
 
+    /**
+     * SPRINT 3 PHASE 4: Get active trips enriched with real-time Redis tracking telemetry
+     */
+    public List<LiveTripAdminDto> getLiveTripsTracking() {
+        List<TripStatus> liveStatuses = List.of(
+                TripStatus.DRIVER_ARRIVING,
+                TripStatus.ARRIVED,
+                TripStatus.IN_TRIP
+        );
+
+        List<Trip> activeTrips = tripRepository.findByStatusInOrderByRequestedAtDesc(liveStatuses);
+
+        return activeTrips.stream().map(trip -> {
+            LiveTripAdminDto dto = new LiveTripAdminDto();
+            dto.setTripId(trip.getId());
+            dto.setTripCode(trip.getTripCode());
+            dto.setStatus(trip.getStatus());
+            dto.setVehicleType(trip.getVehicleType());
+            dto.setPickupAddress(trip.getPickupAddress());
+            dto.setPickupLat(trip.getPickupLat());
+            dto.setPickupLng(trip.getPickupLng());
+            dto.setDropoffAddress(trip.getDropoffAddress());
+            dto.setDropoffLat(trip.getDropoffLat());
+            dto.setDropoffLng(trip.getDropoffLng());
+            dto.setRequestedAt(trip.getRequestedAt());
+            dto.setMatchedAt(trip.getMatchedAt());
+            dto.setFareAmountVnd(trip.getFinalAmount());
+            dto.setCo2SavedGrams(trip.getCo2SavedGrams());
+
+            double distKm = (trip.getEstimatedDistanceM() != null ? trip.getEstimatedDistanceM() : 0) / 1000.0;
+            dto.setEstimatedDistanceKm(BigDecimal.valueOf(distKm).setScale(1, RoundingMode.HALF_UP).doubleValue());
+            dto.setEstimatedDurationMinutes((trip.getEstimatedDurationS() != null ? trip.getEstimatedDurationS() : 0) / 60);
+
+            // Customer Info
+            if (trip.getCustomerId() != null) {
+                userRepository.findById(trip.getCustomerId()).ifPresent(user -> {
+                    dto.setCustomerName(user.getFullName());
+                    dto.setCustomerPhone(user.getPhoneNumber());
+                });
+            }
+
+            // Driver Info
+            if (trip.getDriverId() != null) {
+                driverProfileRepository.findById(trip.getDriverId()).ifPresent(profile -> {
+                    Vehicle vehicle = trip.getVehicleId() != null
+                            ? vehicleRepository.findById(trip.getVehicleId()).orElse(null)
+                            : null;
+                    dto.setDriver(buildDriverSummary(profile, vehicle));
+                });
+            }
+
+            // Tracking info from Redis
+            if (tripTrackingRedisService != null) {
+                Map<String, String> tracking = tripTrackingRedisService.getTracking(trip.getId());
+                if (!tracking.isEmpty()) {
+                    if (tracking.containsKey("driverLat")) dto.setDriverLat(Double.parseDouble(tracking.get("driverLat")));
+                    if (tracking.containsKey("driverLng")) dto.setDriverLng(Double.parseDouble(tracking.get("driverLng")));
+                    if (tracking.containsKey("bearing")) dto.setBearing(Double.parseDouble(tracking.get("bearing")));
+                    if (tracking.containsKey("speedKmh")) dto.setSpeedKmh(Double.parseDouble(tracking.get("speedKmh")));
+                    if (tracking.containsKey("batteryPercent")) dto.setBatteryPercent(Integer.parseInt(tracking.get("batteryPercent")));
+                    if (tracking.containsKey("etaSeconds")) dto.setEtaSeconds(Integer.parseInt(tracking.get("etaSeconds")));
+                    if (tracking.containsKey("distanceRemainingM")) dto.setDistanceRemainingM(Integer.parseInt(tracking.get("distanceRemainingM")));
+                    if (tracking.containsKey("phase")) dto.setPhase(tracking.get("phase"));
+                    if (tracking.containsKey("lastPingEpoch")) dto.setLastPingEpoch(Long.parseLong(tracking.get("lastPingEpoch")));
+                }
+                String polyline = tripTrackingRedisService.getRoutePolyline(trip.getId());
+                dto.setRoutePolyline(polyline);
+            }
+
+            // Fallback for driver coordinates if redis has not received a ping yet
+            if (dto.getDriverLat() == null && dto.getPickupLat() != null) {
+                dto.setDriverLat(dto.getPickupLat());
+                dto.setDriverLng(dto.getPickupLng());
+            }
+
+            return dto;
+        }).toList();
+    }
+
+    /**
+     * SPRINT 3 PHASE 4: Operations KPI Cards stats for Today
+     */
+    public TodayTripStatsDto getTodayTripStats() {
+        Instant startOfDay = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"))
+                .atStartOfDay(java.time.ZoneId.of("Asia/Ho_Chi_Minh"))
+                .toInstant();
+
+        List<Trip> tripsToday = tripRepository.findTripsToday(startOfDay);
+
+        long activeCount = tripsToday.stream()
+                .filter(t -> t.getStatus() == TripStatus.DRIVER_ARRIVING ||
+                             t.getStatus() == TripStatus.ARRIVED ||
+                             t.getStatus() == TripStatus.IN_TRIP ||
+                             t.getStatus() == TripStatus.MATCHED)
+                .count();
+
+        long completedCount = tripsToday.stream()
+                .filter(t -> t.getStatus() == TripStatus.COMPLETED)
+                .count();
+
+        // Calculate average pickup time (from matchedAt to arrivedPickupAt)
+        List<Long> pickupTimesSeconds = tripsToday.stream()
+                .filter(t -> t.getMatchedAt() != null && t.getArrivedPickupAt() != null && !t.getArrivedPickupAt().isBefore(t.getMatchedAt()))
+                .map(t -> java.time.Duration.between(t.getMatchedAt(), t.getArrivedPickupAt()).getSeconds())
+                .filter(s -> s > 0 && s < 3600)
+                .toList();
+
+        long avgPickupSec = pickupTimesSeconds.isEmpty() ? 0 : (long) pickupTimesSeconds.stream().mapToLong(Long::longValue).average().orElse(0.0);
+        double avgPickupMin = BigDecimal.valueOf(avgPickupSec / 60.0).setScale(1, RoundingMode.HALF_UP).doubleValue();
+
+        // Calculate total km and CO2
+        double totalKm = tripsToday.stream()
+                .mapToDouble(t -> {
+                    if (t.getActualDistanceM() != null && t.getActualDistanceM() > 0) {
+                        return t.getActualDistanceM() / 1000.0;
+                    } else if (t.getEstimatedDistanceM() != null) {
+                        return t.getEstimatedDistanceM() / 1000.0;
+                    }
+                    return 0.0;
+                })
+                .sum();
+        totalKm = BigDecimal.valueOf(totalKm).setScale(1, RoundingMode.HALF_UP).doubleValue();
+
+        BigDecimal co2Grams = tripsToday.stream()
+                .map(t -> t.getCo2SavedGrams() != null ? t.getCo2SavedGrams() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        double co2Kg = co2Grams.divide(BigDecimal.valueOf(1000), 2, RoundingMode.HALF_UP).doubleValue();
+
+        return new TodayTripStatsDto(
+                activeCount,
+                avgPickupMin,
+                avgPickupSec,
+                totalKm,
+                co2Grams,
+                co2Kg,
+                completedCount
+        );
+    }
+
     public List<TripResponseDto> getAllTrips() {
         return tripRepository.findAll().stream()
                 .map(this::mapToTripResponse)
                 .toList();
     }
+
 
     // ==========================================
     // SPRINT 3 PHASE 1: TRIP EXECUTION METHODS
@@ -944,6 +1085,11 @@ public class TripService {
         dto.setCancelledBy(trip.getCancelledBy());
         dto.setRequestedAt(trip.getRequestedAt());
         dto.setMatchedAt(trip.getMatchedAt());
+        dto.setArrivedPickupAt(trip.getArrivedPickupAt());
+        dto.setStartedTripAt(trip.getStartedTripAt());
+        dto.setCompletedAt(trip.getCompletedAt());
+        dto.setActualDistanceM(trip.getActualDistanceM());
+        dto.setActualDurationS(trip.getActualDurationS());
 
         if (trip.getDriverId() != null) {
             DriverProfile profile = driverProfileRepository.findById(trip.getDriverId()).orElse(null);

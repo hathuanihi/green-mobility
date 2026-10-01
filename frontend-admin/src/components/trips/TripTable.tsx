@@ -1,9 +1,10 @@
 "use client";
 
 import React from "react";
-import { Eye, MapPin, ArrowRight, User, Car, Leaf } from "lucide-react";
+import Link from "next/link";
+import { Eye, MapPin, ArrowRight, User, Car, Leaf, Radio } from "lucide-react";
 import { Trip } from "@/types";
-import { VEHICLE_CONFIG } from "@/constants";
+import { VEHICLE_CONFIG, isActiveTrip } from "@/constants";
 import { formatCurrency, formatTime } from "@/lib/formatters";
 import TripStatusBadge from "./TripStatusBadge";
 
@@ -52,9 +53,11 @@ export default function TripTable({
               <th className="py-3.5 px-4">Lộ Trình</th>
               <th className="py-3.5 px-4">Tài Xế Nhận</th>
               <th className="py-3.5 px-4">Cước Phí</th>
+              <th className="py-3.5 px-4">Quãng Đường TT</th>
+              <th className="py-3.5 px-4">Thời Gian TT</th>
               <th className="py-3.5 px-4">Giảm CO2</th>
               <th className="py-3.5 px-4">Trạng Thái</th>
-              <th className="py-3.5 px-4 text-right">Chi Tiết</th>
+              <th className="py-3.5 px-4 text-right">Thao Tác</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/60 text-slate-300">
@@ -118,6 +121,40 @@ export default function TripTable({
                   {formatCurrency(trip.finalAmountVnd)}
                 </td>
 
+                {/* Actual Distance */}
+                <td className="py-4 px-4 whitespace-nowrap font-mono text-xs">
+                  {trip.status === "COMPLETED" ? (
+                    <span className="text-emerald-400 font-bold">
+                      {trip.actualDistanceM
+                        ? `${(trip.actualDistanceM / 1000).toFixed(1)} km`
+                        : `${trip.estimatedDistanceKm} km`}
+                    </span>
+                  ) : isActiveTrip(trip.status) ? (
+                    <span className="text-amber-400 font-semibold text-[11px] animate-pulse">
+                      Đang di chuyển
+                    </span>
+                  ) : (
+                    <span className="text-slate-500">-</span>
+                  )}
+                </td>
+
+                {/* Actual Duration */}
+                <td className="py-4 px-4 whitespace-nowrap font-mono text-xs">
+                  {trip.status === "COMPLETED" ? (
+                    <span className="text-slate-200">
+                      {trip.actualDurationS
+                        ? `${Math.max(1, Math.round(trip.actualDurationS / 60))} phút`
+                        : `${trip.estimatedDurationMinutes} phút`}
+                    </span>
+                  ) : isActiveTrip(trip.status) ? (
+                    <span className="text-slate-400 text-[11px]">
+                      ~{trip.estimatedDurationMinutes}m
+                    </span>
+                  ) : (
+                    <span className="text-slate-500">-</span>
+                  )}
+                </td>
+
                 {/* CO2 Saved */}
                 <td className="py-4 px-4 whitespace-nowrap">
                   <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-400 font-mono">
@@ -133,17 +170,31 @@ export default function TripTable({
 
                 {/* Action */}
                 <td className="py-4 px-4 text-right whitespace-nowrap">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onViewDetails(trip);
-                    }}
-                    className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 transition"
-                    title="Xem chi tiết chuyến đi"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </button>
+                  <div className="inline-flex items-center gap-2 justify-end">
+                    {isActiveTrip(trip.status) && (
+                      <Link
+                        href={`/trips/live-tracking?tripId=${trip.tripId}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-semibold border border-emerald-500/30 transition shadow-sm"
+                        title="Giám sát trực tiếp trên bản đồ"
+                      >
+                        <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                        <span>Live</span>
+                      </Link>
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onViewDetails(trip);
+                      }}
+                      className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 transition"
+                      title="Xem chi tiết chuyến đi"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                  </div>
                 </td>
+
               </tr>
             ))}
           </tbody>

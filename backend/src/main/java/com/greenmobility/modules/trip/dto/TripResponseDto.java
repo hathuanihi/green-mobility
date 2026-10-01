@@ -34,6 +34,11 @@ public class TripResponseDto {
     private String cancelledBy;
     private Instant requestedAt;
     private Instant matchedAt;
+    private Instant arrivedPickupAt;
+    private Instant startedTripAt;
+    private Instant completedAt;
+    private Integer actualDistanceM;
+    private Integer actualDurationS;
 
     public TripResponseDto() {}
 
@@ -220,4 +225,45 @@ public class TripResponseDto {
     public void setMatchedAt(Instant matchedAt) {
         this.matchedAt = matchedAt;
     }
+
+    public Instant getArrivedPickupAt() {
+        return arrivedPickupAt;
+    }
+
+    public void setArrivedPickupAt(Instant arrivedPickupAt) {
+        this.arrivedPickupAt = arrivedPickupAt;
+    }
+
+    public Instant getStartedTripAt() {
+        return startedTripAt;
+    }
+
+    public void setStartedTripAt(Instant startedTripAt) {
+        this.startedTripAt = startedTripAt;
+    }
+
+    public Instant getCompletedAt() {
+        return completedAt;
+    }
+
+    public void setCompletedAt(Instant completedAt) {
+        this.completedAt = completedAt;
+    }
+
+    public Integer getActualDistanceM() {
+        return actualDistanceM;
+    }
+
+    public void setActualDistanceM(Integer actualDistanceM) {
+        this.actualDistanceM = actualDistanceM;
+    }
+
+    public Integer getActualDurationS() {
+        return actualDurationS;
+    }
+
+    public void setActualDurationS(Integer actualDurationS) {
+        this.actualDurationS = actualDurationS;
+    }
 }
+
