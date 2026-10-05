@@ -97,6 +97,14 @@ green-mobility:
     default-grid-emission-factor-gco2-kwh: 722.1
     tree-absorption-daily-kg: 0.06
     led-bulb-consumption-hourly-gco2: 7.221
+  tracking:
+    geofence-arrived-radius-m: 50
+    manual-arrive-max-distance-m: 200
+    reroute-deviation-m: 100
+    eta-refresh-interval-s: 30
+    no-show-timeout-s: 300
+    gps-ping-interval-moving-s: 3
+    gps-ping-interval-idle-s: 15
   map:
     goong:
       api-key: ${GOONG_API_KEY:}

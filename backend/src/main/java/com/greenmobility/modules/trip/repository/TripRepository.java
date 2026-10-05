@@ -33,4 +33,8 @@ public interface TripRepository extends JpaRepository<Trip, UUID> {
 
     @Query("SELECT COUNT(t) > 0 FROM Trip t WHERE t.customerId = :customerId AND t.status IN :statuses")
     boolean existsActiveTripForCustomer(@Param("customerId") UUID customerId, @Param("statuses") Collection<TripStatus> statuses);
+
+    @Query("SELECT t FROM Trip t WHERE t.requestedAt >= :startOfDay ORDER BY t.requestedAt DESC")
+    List<Trip> findTripsToday(@Param("startOfDay") java.time.Instant startOfDay);
 }
+

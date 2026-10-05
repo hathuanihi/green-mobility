@@ -14,6 +14,7 @@ import {
   Activity,
   LogOut,
   ChevronRight,
+  Radio,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/drivers", label: "Tài xế & KYC", icon: Users },
   { href: "/vehicles", label: "Phương tiện Xe điện", icon: Car },
   { href: "/trips", label: "Chuyến đi & Replay", icon: TrendingUp },
+  { href: "/trips/live-tracking", label: "Live Tracking", icon: Radio },
   { href: "/emissions", label: "Hệ số Phát thải", icon: Sliders },
   { href: "/fraud-monitor", label: "Giám sát Gian lận", icon: ShieldCheck },
   { href: "/ai-copilot", label: "AI Admin Copilot", icon: Bot },
@@ -35,8 +37,12 @@ export default function Sidebar() {
     if (path === "/") {
       return pathname === "/";
     }
+    if (path === "/trips") {
+      return pathname === "/trips";
+    }
     return pathname?.startsWith(path);
   };
+
 
   return (
     <aside className="w-64 border-r border-slate-800 bg-slate-900/60 backdrop-blur-md p-6 flex flex-col justify-between shrink-0 h-screen sticky top-0">

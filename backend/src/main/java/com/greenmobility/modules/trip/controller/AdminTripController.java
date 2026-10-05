@@ -1,6 +1,8 @@
 package com.greenmobility.modules.trip.controller;
 
 import com.greenmobility.common.response.ApiResponse;
+import com.greenmobility.modules.trip.dto.LiveTripAdminDto;
+import com.greenmobility.modules.trip.dto.TodayTripStatsDto;
 import com.greenmobility.modules.trip.dto.TripResponseDto;
 import com.greenmobility.modules.trip.service.TripService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,11 +27,18 @@ public class AdminTripController {
         this.tripService = tripService;
     }
 
-    @Operation(summary = "Giám sát các cuốc xe trực tiếp (Live Trips)", description = "Xem danh sách các cuốc xe đang trong quá trình tìm kiếm, ghép cặp hoặc đang di chuyển")
+    @Operation(summary = "Giám sát các cuốc xe trực tiếp (Live Tracking)", description = "Xem danh sách các cuốc xe đang hoạt động kèm tọa độ GPS thời gian thực và ETA từ Redis")
     @GetMapping("/live")
-    public ResponseEntity<ApiResponse<List<TripResponseDto>>> getLiveTrips() {
-        List<TripResponseDto> liveTrips = tripService.getLiveTrips();
+    public ResponseEntity<ApiResponse<List<LiveTripAdminDto>>> getLiveTrips() {
+        List<LiveTripAdminDto> liveTrips = tripService.getLiveTripsTracking();
         return ResponseEntity.ok(ApiResponse.ok(liveTrips));
+    }
+
+    @Operation(summary = "Thống kê hoạt động vận hành trong ngày", description = "Xem số cuốc xe active, thời gian đón trung bình, tổng km xe chạy và lượng CO2 giảm phát thải hôm nay")
+    @GetMapping("/stats/today")
+    public ResponseEntity<ApiResponse<TodayTripStatsDto>> getTodayStats() {
+        TodayTripStatsDto stats = tripService.getTodayTripStats();
+        return ResponseEntity.ok(ApiResponse.ok(stats));
     }
 
     @Operation(summary = "Xem toàn bộ lịch sử chuyến xe", description = "Truy xuất danh sách tất cả các cuốc xe trên hệ thống")
@@ -39,3 +48,4 @@ public class AdminTripController {
         return ResponseEntity.ok(ApiResponse.ok(allTrips));
     }
 }
+
