@@ -2,6 +2,7 @@ package com.greenmobility.common.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -15,12 +16,26 @@ public class JwtTokenProvider {
 
     private final SecretKey secretKey;
     private final long expirationMillis;
+    private final long refreshExpirationMillis;
 
     public JwtTokenProvider(
+            String secret,
+            long expirationSeconds) {
+        this(secret, expirationSeconds, 604800L);
+    }
+
+    @Autowired
+    public JwtTokenProvider(
             @Value("${security.jwt.secret-key}") String secret,
-            @Value("${security.jwt.expiration-seconds:86400}") long expirationSeconds) {
+            @Value("${security.jwt.expiration-seconds:3600}") long expirationSeconds,
+            @Value("${security.jwt.refresh-expiration-seconds:604800}") long refreshExpirationSeconds) {
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.expirationMillis = expirationSeconds * 1000;
+        this.refreshExpirationMillis = refreshExpirationSeconds * 1000;
+    }
+
+    public long getExpirationSeconds() {
+        return expirationMillis / 1000;
     }
 
     public String generateToken(UUID userId, String phoneNumber, String role) {
@@ -53,6 +68,33 @@ public class JwtTokenProvider {
                     .build()
                     .parseSignedClaims(token);
             return true;
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    public String generateRefreshToken(UUID userId, String phoneNumber) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + refreshExpirationMillis);
+
+        return Jwts.builder()
+                .subject(userId.toString())
+                .claim("phone", phoneNumber)
+                .claim("type", "REFRESH")
+                .issuedAt(now)
+                .expiration(expiryDate)
+                .signWith(secretKey)
+                .compact();
+    }
+
+    public boolean validateRefreshToken(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+            return "REFRESH".equals(claims.get("type"));
         } catch (JwtException | IllegalArgumentException e) {
             return false;
         }

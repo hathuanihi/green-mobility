@@ -9,17 +9,23 @@ public class AuthResponse {
     private String fullName;
     private String role;
     private String token;
+    private String refreshToken;
     private long expiresIn;
     private String kycStatus; // Dành cho Driver (PENDING, APPROVED, REJECTED hoặc null nếu là Customer)
 
     public AuthResponse() {}
 
     public AuthResponse(UUID userId, String phoneNumber, String fullName, String role, String token, long expiresIn, String kycStatus) {
+        this(userId, phoneNumber, fullName, role, token, null, expiresIn, kycStatus);
+    }
+
+    public AuthResponse(UUID userId, String phoneNumber, String fullName, String role, String token, String refreshToken, long expiresIn, String kycStatus) {
         this.userId = userId;
         this.phoneNumber = phoneNumber;
         this.fullName = fullName;
         this.role = role;
         this.token = token;
+        this.refreshToken = refreshToken;
         this.expiresIn = expiresIn;
         this.kycStatus = kycStatus;
     }
@@ -38,6 +44,9 @@ public class AuthResponse {
 
     public String getToken() { return token; }
     public void setToken(String token) { this.token = token; }
+
+    public String getRefreshToken() { return refreshToken; }
+    public void setRefreshToken(String refreshToken) { this.refreshToken = refreshToken; }
 
     public long getExpiresIn() { return expiresIn; }
     public void setExpiresIn(long expiresIn) { this.expiresIn = expiresIn; }
