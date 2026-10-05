@@ -26,6 +26,7 @@ public class RoutingService {
         this.goongMapService = new GoongMapService();
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
     public RoutingService(GoongMapService goongMapService) {
         this.goongMapService = goongMapService;
     }

@@ -41,6 +41,13 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.ok("Đăng nhập thành công", response));
     }
 
+    @Operation(summary = "Làm mới Access Token (Refresh Token)", description = "Sử dụng Refresh Token hợp lệ để cấp mới Access Token và xoay vòng Refresh Token")
+    @PostMapping("/refresh")
+    public ResponseEntity<ApiResponse<AuthResponse>> refreshToken(@Valid @RequestBody com.greenmobility.modules.identity.dto.RefreshTokenRequest request) {
+        AuthResponse response = authService.refreshToken(request);
+        return ResponseEntity.ok(ApiResponse.ok("Làm mới token thành công", response));
+    }
+
     @Operation(summary = "Lấy thông tin tài khoản hiện tại", description = "Xem hồ sơ người dùng hiện tại dựa trên Bearer Token")
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> getCurrentUser(@AuthenticationPrincipal UserPrincipal currentUser) {

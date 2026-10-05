@@ -76,6 +76,7 @@ public class TripService {
                 rabbitTemplate, messagingTemplate, matchingEngineService, null, null, null, null);
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
     public TripService(TripRepository tripRepository,
                        DriverProfileRepository driverProfileRepository,
                        VehicleRepository vehicleRepository,
@@ -87,10 +88,10 @@ public class TripService {
                        RabbitTemplate rabbitTemplate,
                        SimpMessagingTemplate messagingTemplate,
                        MatchingEngineService matchingEngineService,
-                       GpsTelemetryService gpsTelemetryService,
-                       TripTrackingRedisService tripTrackingRedisService,
-                       GeofenceService geofenceService,
-                       ActualDistanceCalculator actualDistanceCalculator) {
+                       @org.springframework.beans.factory.annotation.Autowired(required = false) GpsTelemetryService gpsTelemetryService,
+                       @org.springframework.beans.factory.annotation.Autowired(required = false) TripTrackingRedisService tripTrackingRedisService,
+                       @org.springframework.beans.factory.annotation.Autowired(required = false) GeofenceService geofenceService,
+                       @org.springframework.beans.factory.annotation.Autowired(required = false) ActualDistanceCalculator actualDistanceCalculator) {
         this.tripRepository = tripRepository;
         this.driverProfileRepository = driverProfileRepository;
         this.vehicleRepository = vehicleRepository;

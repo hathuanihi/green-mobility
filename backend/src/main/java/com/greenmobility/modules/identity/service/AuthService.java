@@ -60,6 +60,7 @@ public class AuthService {
 
         User savedUser = userRepository.save(user);
         String token = tokenProvider.generateToken(savedUser.getId(), savedUser.getPhoneNumber(), savedUser.getRole().name());
+        String refreshToken = tokenProvider.generateRefreshToken(savedUser.getId(), savedUser.getPhoneNumber());
 
         return new AuthResponse(
                 savedUser.getId(),
@@ -67,7 +68,8 @@ public class AuthService {
                 savedUser.getFullName(),
                 savedUser.getRole().name(),
                 token,
-                86400,
+                refreshToken,
+                tokenProvider.getExpirationSeconds(),
                 null
         );
     }
@@ -82,6 +84,7 @@ public class AuthService {
         }
 
         String token = tokenProvider.generateToken(user.getId(), user.getPhoneNumber(), user.getRole().name());
+        String refreshToken = tokenProvider.generateRefreshToken(user.getId(), user.getPhoneNumber());
 
         String kycStatus = null;
         if (user.getRole() == Role.ROLE_DRIVER) {
@@ -94,7 +97,42 @@ public class AuthService {
                 user.getFullName(),
                 user.getRole().name(),
                 token,
-                86400,
+                refreshToken,
+                tokenProvider.getExpirationSeconds(),
+                kycStatus
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public AuthResponse refreshToken(com.greenmobility.modules.identity.dto.RefreshTokenRequest request) {
+        if (!tokenProvider.validateRefreshToken(request.getRefreshToken())) {
+            throw new BadRequestException("Refresh token không hợp lệ hoặc đã hết hạn");
+        }
+
+        UUID userId = tokenProvider.getUserIdFromToken(request.getRefreshToken());
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Người dùng không tồn tại"));
+
+        if (user.getStatus() != com.greenmobility.modules.identity.entity.UserStatus.ACTIVE) {
+            throw new BadRequestException("Tài khoản người dùng đã bị khóa");
+        }
+
+        String newToken = tokenProvider.generateToken(user.getId(), user.getPhoneNumber(), user.getRole().name());
+        String newRefreshToken = tokenProvider.generateRefreshToken(user.getId(), user.getPhoneNumber());
+
+        String kycStatus = null;
+        if (user.getRole() == Role.ROLE_DRIVER) {
+            kycStatus = driverPublicService.getKycStatusByUserId(user.getId()).orElse(null);
+        }
+
+        return new AuthResponse(
+                user.getId(),
+                user.getPhoneNumber(),
+                user.getFullName(),
+                user.getRole().name(),
+                newToken,
+                newRefreshToken,
+                tokenProvider.getExpirationSeconds(),
                 kycStatus
         );
     }
