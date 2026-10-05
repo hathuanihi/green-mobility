@@ -23,15 +23,10 @@ import {
   Zap,
 } from "lucide-react";
 import * as maplibregl from "maplibre-gl";
-import { setWorkerUrl } from "maplibre-gl";
 import { LiveTripDto, TodayStatsDto, TripStatus, VehicleType } from "@/types";
 import { fetchLiveTrips, fetchTodayStats } from "@/lib/tripService";
 import { VEHICLE_CONFIG, TRIP_STATUS_CONFIG } from "@/constants";
 import { formatCurrency, formatTime } from "@/lib/formatters";
-
-if (typeof window !== "undefined") {
-  setWorkerUrl("/maplibre-gl-worker.js");
-}
 
 const GOONG_MAPTILES_KEY = process.env.NEXT_PUBLIC_GOONG_MAPTILES_KEY || "";
 const GOONG_DARK_STYLE = `https://tiles.goong.io/assets/goong_map_dark.json?api_key=${GOONG_MAPTILES_KEY}`;
@@ -242,9 +237,13 @@ export default function LiveTrackingPage() {
     };
 
     if (map.isStyleLoaded()) {
+      map.resize();
       renderMarkers();
     } else {
-      map.once("load", renderMarkers);
+      map.once("load", () => {
+        map.resize();
+        renderMarkers();
+      });
     }
   }, [filteredTrips, mapMode, selectedTrip]);
 
