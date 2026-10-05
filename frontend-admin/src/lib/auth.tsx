@@ -48,10 +48,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isLoading) {
-      const isAuthPage = pathname?.startsWith("/login");
-      if (!token && !isAuthPage) {
+      const isPublicPage = pathname?.startsWith("/login") || pathname?.startsWith("/eco");
+      if (!token && !isPublicPage) {
         router.replace("/login");
-      } else if (token && isAuthPage) {
+      } else if (token && pathname?.startsWith("/login")) {
         router.replace("/");
       }
     }

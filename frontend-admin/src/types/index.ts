@@ -197,4 +197,81 @@ export interface TodayStatsDto {
   completedTripsTodayCount: number;
 }
 
+export interface EmissionFactor {
+  id: string;
+  vehicleCategory: string;
+  baselineGasolineFactorGco2Km: number;
+  evEnergyConsumptionKwhKm: number;
+  gridEmissionFactorGco2Kwh: number;
+  calculatedEvFactorGco2Km: number;
+  netCo2SavingPerKm: number;
+  region: string;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  isActive: boolean;
+  createdBy?: string | null;
+  createdAt: string;
+}
+
+export interface CarbonSimulationResult {
+  vehicleCategory: string;
+  distanceKm: number;
+  baselineGasolineFactorGco2Km: number;
+  evEnergyConsumptionKwhKm: number;
+  gridEmissionFactorGco2Kwh: number;
+  calculatedEvFactorGco2Km: number;
+  netCo2SavingPerKm: number;
+  baselineGasolineCo2Grams: number;
+  evEmittedCo2Grams: number;
+  netCo2SavedGrams: number;
+  netCo2SavedKg: number;
+  treeAbsorptionDaysEquiv: number;
+  ledBulbHoursEquiv: number;
+  smartphoneChargesEquiv: number;
+  carbonCreditsEarned: number;
+  ecoPoints: number;
+}
+
+export interface AdminVehicle {
+  id: string;
+  driverId?: string;
+  driverName?: string;
+  driverPhone?: string;
+  vehicleType: VehicleType;
+  make: string;
+  model: string;
+  licensePlate: string;
+  color: string;
+  batteryCapacityKwh: number;
+  rangePerChargeKm: number;
+  registrationCertificateUrl?: string;
+  inspectionExpiryDate?: string;
+  isVerified: boolean;
+  createdAt: string;
+}
+
+export interface FraudAlert {
+  id: string;
+  tripId?: string;
+  driverId?: string;
+  driverName?: string;
+  driverPhone?: string;
+  vehiclePlate?: string;
+  alertType: string;
+  riskScore: number;
+  details: string;
+  resolutionStatus: "PENDING" | "RESOLVED" | "DISMISSED";
+  resolvedBy?: string;
+  resolvedAt?: string;
+  createdAt: string;
+}
+
+export interface FraudStats {
+  totalAlerts: number;
+  pendingAlerts: number;
+  resolvedAlerts: number;
+  highRiskRatio: number;
+}
+
+
 

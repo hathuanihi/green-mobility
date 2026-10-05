@@ -74,6 +74,20 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(tripCompletedQueue).to(greenMobilityExchange).with(ROUTING_KEY_TRIP_COMPLETED);
     }
 
+    // Sprint 4: Carbon calculated queue (consumed by Sprint 6 Double-entry Ledger & Incentive)
+    public static final String QUEUE_CARBON_CALCULATED = "q.carbon.calculated";
+    public static final String ROUTING_KEY_CARBON_CALCULATED = "carbon.event.calculated";
+
+    @Bean
+    public Queue carbonCalculatedQueue() {
+        return QueueBuilder.durable(QUEUE_CARBON_CALCULATED).build();
+    }
+
+    @Bean
+    public Binding carbonCalculatedBinding(Queue carbonCalculatedQueue, TopicExchange greenMobilityExchange) {
+        return BindingBuilder.bind(carbonCalculatedQueue).to(greenMobilityExchange).with(ROUTING_KEY_CARBON_CALCULATED);
+    }
+
     @Bean
     public MessageConverter jsonMessageConverter() {
         return new Jackson2JsonMessageConverter();
