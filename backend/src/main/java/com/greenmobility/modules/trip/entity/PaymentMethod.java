@@ -4,5 +4,6 @@ public enum PaymentMethod {
     CASH,
     VNPAY,
     MOMO,
-    GREEN_WALLET
+    GREEN_WALLET,
+    WALLET
 }

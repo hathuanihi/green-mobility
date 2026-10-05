@@ -20,6 +20,8 @@ Dự án có đầy đủ tài liệu kiến trúc, database schema, API contrac
 * 💻 **[docs/04_ADMIN_SPEC.md](./docs/04_ADMIN_SPEC.md)**: Đặc tả Web Admin Portal (Next.js App Router, Tailwind CSS, Shadcn UI), Dashboard CO2, duyệt KYC xe điện, cấu hình hệ số phát thải, bản đồ Replay hành trình GPS, giám sát gian lận ML (Isolation Forest) và AI Copilot Chatbot.
 * 🤖 **[docs/05_AGENT_PLAYBOOK.md](./docs/05_AGENT_PLAYBOOK.md)**: Cẩm nang hướng dẫn cho AI Coding Agent với 6 nguyên tắc bất biến, lộ trình 8 Sprint, bộ Mock Data tọa độ TP.HCM và Prompt Templates chuẩn.
 * 📋 **[docs/sprints/SPRINT_1_PROGRESS_REPORT.md](./docs/sprints/SPRINT_1_PROGRESS_REPORT.md)**: Báo cáo Tiến độ Hoàn thành Sprint 1 (Authentication, KYC, Biometrics 512D) kèm ảnh chụp màn hình minh chứng thực tế trên Web và Mobile.
+* 📋 **[docs/sprints/SPRINT_2_PROGRESS_REPORT.md](./docs/sprints/SPRINT_2_PROGRESS_REPORT.md)**: Báo cáo Tiến độ Hoàn thành Sprint 2 (Matching Engine, Multi-Tier Dispatch, Redisson Lock) kèm ảnh chụp minh chứng thực tế.
+* 📋 **[docs/sprints/SPRINT_3_PROGRESS_REPORT.md](./docs/sprints/SPRINT_3_PROGRESS_REPORT.md)**: Báo cáo Tiến độ Hoàn thành Sprint 3 (Real-time GPS Tracking, Turn-by-Turn Navigation, Geofence, MongoDB Telemetry) kèm đầy đủ 11 ảnh chụp minh chứng thực tế trên Web Admin và Mobile Apps.
 
 ---
 

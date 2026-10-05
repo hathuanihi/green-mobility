@@ -6,14 +6,6 @@ import { isActiveTrip } from "@/constants";
 import { formatCurrency } from "@/lib/formatters";
 import { Layers, MapPin, Radio, Zap, Info, Maximize2, Compass } from "lucide-react";
 import * as maplibregl from "maplibre-gl";
-import { setWorkerUrl } from "maplibre-gl";
-
-// Fix: maplibre-gl v6 cần WebWorker để decode vector tiles.
-// Dùng setWorkerUrl() để trỏ đến file worker bundle sẵn trong /public
-// tránh bị chặn bởi CSP hoặc Next.js bundler.
-if (typeof window !== "undefined") {
-  setWorkerUrl("/maplibre-gl-worker.js");
-}
 
 interface LiveDispatchMapProps {
   trips: Trip[];
@@ -154,9 +146,13 @@ export default function LiveDispatchMap({ trips, onSelectTrip }: LiveDispatchMap
     };
 
     if (map.isStyleLoaded()) {
+      map.resize();
       updateMapContent();
     } else {
-      map.once("load", updateMapContent);
+      map.once("load", () => {
+        map.resize();
+        updateMapContent();
+      });
     }
   }, [mapMode]);
 
