@@ -3,7 +3,7 @@
 > **Dự án**: Nền tảng gọi xe điện tích hợp hệ thống đo lường, báo cáo và khuyến khích giảm phát thải carbon (Green Mobility)  
 > **Giai đoạn**: **Sprint 3 — Real-time GPS Tracking, Trip Execution & Turn-by-Turn Navigation**  
 > **Trạng thái tổng thể**: **HOÀN THÀNH 100% CÁC HẠNG MỤC SPRINT 3**  
-> **Thời gian thực hiện theo Đề cương KLTN**: 19/10/2026 – 25/10/2026 (Hoàn thành sớm: 05/10/2026)  
+> **Thời gian thực hiện theo Đề cương KLTN**: 19/10/2026 – 25/10/2026 (Hoàn thành: 19/10/2026)  
 > **Sinh viên thực hiện**:  
 > - **Phạm Hà Anh Thư** — MSSV: 23521544  
 > - **Nguyễn Minh Thiện** — MSSV: 23521484  
