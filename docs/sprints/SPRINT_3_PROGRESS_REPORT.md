@@ -17,7 +17,7 @@
 
 Sprint 3 kế thừa toàn bộ nền tảng Định danh, Hồ sơ tài xế xe điện, Xác thực khuôn mặt sinh trắc học của Sprint 1 và Hệ thống Đặt xe & Ghép cặp tài xế đa bán kính của Sprint 2, chính thức hiện thực hóa **giai đoạn thực thi cuốc xe (Trip Execution Lifecycle)** — giai đoạn quan trọng và phức tạp nhất về mặt kỹ thuật thời gian thực trong toàn bộ hệ thống Green Mobility:
 
-$$\text{MATCHED} \longrightarrow \text{DRIVER\_ARRIVING} \longrightarrow \text{ARRIVED} \longrightarrow \text{IN\_TRIP} \longrightarrow \text{COMPLETED}$$
+`MATCHED` → `DRIVER_ARRIVING` → `ARRIVED` → `IN_TRIP` → `COMPLETED`
 
 Sprint 3 giải quyết trọn vẹn 4 thách thức kỹ thuật cốt lõi:
 1. **Truyền dẫn & Lưu trữ Dữ liệu Telemetry GPS Cao Tần**: Xây dựng kênh WebSocket STOMP hai chiều xử lý luồng ping GPS chu kỳ 3–5 giây, lưu trữ chuỗi thời gian tối ưu vào **MongoDB Time-Series Collection (`trip_gps_points`)** với chỉ mục không gian `2dsphere` và chính sách TTL tự động dọn dẹp.
