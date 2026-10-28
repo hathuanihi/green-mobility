@@ -5,6 +5,9 @@ export 'src/api_client.dart';
 export 'src/auth_api.dart';
 export 'src/driver_api.dart';
 export 'src/trip_api.dart';
+export 'src/payment_api.dart';
+export 'src/wallet_api.dart';
+export 'src/earnings_api.dart';
 export 'src/stomp_service.dart';
 
 class AppConfig {

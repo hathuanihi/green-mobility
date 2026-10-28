@@ -44,10 +44,11 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/health", "/health/**", "/auth/**", "/uploads/**", "/ws-connect/**", "/trips/estimate", "/map/**", "/carbon/receipts/share/**").permitAll()
+                .requestMatchers("/payments/vnpay/**", "/payments/momo/**", "/dev/**").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/swagger-resources/**", "/webjars/**").permitAll()
-                .requestMatchers("/admin/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_OPERATOR")
+                .requestMatchers("/admin/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_OPERATOR", "ROLE_FINANCE")
                 .requestMatchers("/driver/**").hasAuthority("ROLE_DRIVER")
-                .requestMatchers("/trips/**").authenticated()
+                .requestMatchers("/trips/**", "/payments/**", "/wallet/**").authenticated()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

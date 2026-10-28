@@ -273,5 +273,109 @@ export interface FraudStats {
   highRiskRatio: number;
 }
 
+// Sprint 5 Payment, Wallet & Financial Types
+export interface PaymentItem {
+  paymentId: string;
+  tripId: string;
+  method: string;
+  status: string;
+  amountVnd: number;
+  commissionVnd: number;
+  driverAmountVnd: number;
+  payUrl?: string;
+  expiresAt?: string;
+  paidAt?: string;
+  createdAt: string;
+}
+
+export interface LedgerEntryItem {
+  entryId: string;
+  accountType: string;
+  accountNumber: string;
+  entryType: string;
+  amountVnd: number;
+  balanceAfterVnd: number;
+  createdAt: string;
+}
+
+export interface WebhookEventItem {
+  eventId: string;
+  gateway: string;
+  gatewayTxnRef?: string;
+  signatureValid: boolean;
+  processingResult: string;
+  sourceIp?: string;
+  receivedAt: string;
+}
+
+export interface PaymentDetailData {
+  payment: PaymentItem;
+  ledgerEntries: LedgerEntryItem[];
+  webhookEvents: WebhookEventItem[];
+}
+
+export interface WithdrawalItem {
+  id: string;
+  driverUserId: string;
+  amountVnd: number;
+  bankCode: string;
+  bankAccountLast4: string;
+  accountHolderName: string;
+  status: "PENDING" | "APPROVED_PAID" | "REJECTED" | "CANCELLED";
+  createdAt: string;
+  reviewedAt?: string;
+  rejectReason?: string;
+}
+
+export interface FinanceOverviewData {
+  todayGmv: number;
+  todayPlatformRevenue: number;
+  todayDriverEarnings: number;
+  totalWalletBalance: number;
+  activeDriversCount: number;
+  totalGmvVnd?: number;
+  totalCommissionVnd?: number;
+  successRate?: number;
+  gatewayClearingVnd?: number;
+  payoutClearingVnd?: number;
+  paymentsByMethod?: Record<string, number>;
+  paymentsByStatus?: Record<string, number>;
+  revenueByDay?: Array<{
+    date: string;
+    gmv: number;
+    revenue: number;
+    driverEarnings: number;
+  }>;
+  paymentMethodBreakdown?: Array<{
+    method: string;
+    count: number;
+    amount: number;
+  }>;
+}
+
+export interface ReconciliationData {
+  lastRunAt: string;
+  status: "BALANCED" | "DISCREPANCY";
+  totalSystemDebit: number;
+  totalSystemCredit: number;
+  systemBalanceDifference: number;
+  anomaliesCount: number;
+  checks: {
+    zeroSumLedger: boolean;
+    userBalanceNonNegative: boolean;
+    gatewayMatching: boolean;
+    cashDebtCompliant: boolean;
+    pendingWithdrawalsAudited: boolean;
+  };
+  discrepancies: string[];
+  isBalanced?: boolean;
+  systemTotalVnd?: number;
+  unbalancedTransactionsCount?: number;
+  accountDiscrepanciesCount?: number;
+  latePendingPaymentsCount?: number;
+  checkedAt?: string;
+}
+
+
 
 

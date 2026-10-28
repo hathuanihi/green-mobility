@@ -23,6 +23,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(ex.getMessage()));
     }
 
+    @ExceptionHandler(PaymentBusinessException.class)
+    public ResponseEntity<ApiResponse<Object>> handlePaymentBusinessException(PaymentBusinessException ex) {
+        ApiResponse<Object> response = ApiResponse.error(ex.getMessage(), ex.getErrorCode(), ex.getData());
+        return ResponseEntity.status(ex.getStatus()).body(response);
+    }
+
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<ApiResponse<Void>> handleBadRequest(BadRequestException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(ex.getMessage()));

@@ -73,7 +73,28 @@ public class TripService {
                        MatchingEngineService matchingEngineService) {
         this(tripRepository, driverProfileRepository, vehicleRepository, userRepository,
                 driverGeoRepository, routingService, fareCalculationService, carbonEstimateService,
-                rabbitTemplate, messagingTemplate, matchingEngineService, null, null, null, null);
+                rabbitTemplate, messagingTemplate, matchingEngineService, null, null, null, null, null);
+    }
+
+    public TripService(TripRepository tripRepository,
+                       DriverProfileRepository driverProfileRepository,
+                       VehicleRepository vehicleRepository,
+                       UserRepository userRepository,
+                       DriverGeoRedisRepository driverGeoRepository,
+                       RoutingService routingService,
+                       FareCalculationService fareCalculationService,
+                       CarbonEstimateService carbonEstimateService,
+                       RabbitTemplate rabbitTemplate,
+                       SimpMessagingTemplate messagingTemplate,
+                       MatchingEngineService matchingEngineService,
+                       GpsTelemetryService gpsTelemetryService,
+                       TripTrackingRedisService tripTrackingRedisService,
+                       GeofenceService geofenceService,
+                       ActualDistanceCalculator actualDistanceCalculator) {
+        this(tripRepository, driverProfileRepository, vehicleRepository, userRepository,
+                driverGeoRepository, routingService, fareCalculationService, carbonEstimateService,
+                rabbitTemplate, messagingTemplate, matchingEngineService, gpsTelemetryService,
+                tripTrackingRedisService, geofenceService, actualDistanceCalculator, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -91,7 +112,8 @@ public class TripService {
                        @org.springframework.beans.factory.annotation.Autowired(required = false) GpsTelemetryService gpsTelemetryService,
                        @org.springframework.beans.factory.annotation.Autowired(required = false) TripTrackingRedisService tripTrackingRedisService,
                        @org.springframework.beans.factory.annotation.Autowired(required = false) GeofenceService geofenceService,
-                       @org.springframework.beans.factory.annotation.Autowired(required = false) ActualDistanceCalculator actualDistanceCalculator) {
+                       @org.springframework.beans.factory.annotation.Autowired(required = false) ActualDistanceCalculator actualDistanceCalculator,
+                       @org.springframework.beans.factory.annotation.Autowired(required = false) com.greenmobility.modules.payment.api.PaymentModuleApi paymentModuleApi) {
         this.tripRepository = tripRepository;
         this.driverProfileRepository = driverProfileRepository;
         this.vehicleRepository = vehicleRepository;
@@ -107,7 +129,10 @@ public class TripService {
         this.tripTrackingRedisService = tripTrackingRedisService;
         this.geofenceService = geofenceService;
         this.actualDistanceCalculator = actualDistanceCalculator;
+        this.paymentModuleApi = paymentModuleApi;
     }
+
+    private final com.greenmobility.modules.payment.api.PaymentModuleApi paymentModuleApi;
 
     public TripEstimateResponse estimateTrip(TripEstimateRequest request) {
         RoutingService.RouteInfo route = routingService.calculateRoute(
@@ -137,6 +162,17 @@ public class TripService {
 
     @Transactional
     public TripResponseDto createTripRequest(UUID customerId, TripRequestDto request) {
+        // Guard against outstanding overdue payments (Sprint 5 AC-18)
+        if (paymentModuleApi != null && paymentModuleApi.hasOutstandingPayment(customerId)) {
+            UUID outstandingTripId = paymentModuleApi.getOutstandingTripId(customerId).orElse(null);
+            throw new com.greenmobility.common.exception.PaymentBusinessException(
+                    org.springframework.http.HttpStatus.CONFLICT,
+                    "PAYMENT_OUTSTANDING",
+                    "Bạn có chuyến đi chưa hoàn tất thanh toán. Vui lòng thanh toán trước khi đặt chuyến mới.",
+                    outstandingTripId != null ? java.util.Map.of("tripId", outstandingTripId) : null
+            );
+        }
+
         // Validate customer doesn't have an active pending/matching trip
         List<TripStatus> activeStatuses = List.of(
                 TripStatus.REQUESTED,
