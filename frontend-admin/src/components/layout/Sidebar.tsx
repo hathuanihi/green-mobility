@@ -15,6 +15,9 @@ import {
   LogOut,
   ChevronRight,
   Radio,
+  CreditCard,
+  ArrowDownCircle,
+  BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
@@ -24,6 +27,9 @@ const navItems = [
   { href: "/vehicles", label: "Phương tiện Xe điện", icon: Car },
   { href: "/trips", label: "Chuyến đi & Replay", icon: TrendingUp },
   { href: "/trips/live-tracking", label: "Live Tracking", icon: Radio },
+  { href: "/payments", label: "Giao dịch Thanh toán", icon: CreditCard },
+  { href: "/withdrawals", label: "Duyệt Rút tiền", icon: ArrowDownCircle },
+  { href: "/finance", label: "Đối soát & Tài chính", icon: BarChart3 },
   { href: "/emissions", label: "Hệ số Phát thải", icon: Sliders },
   { href: "/fraud-monitor", label: "Giám sát Gian lận", icon: ShieldCheck },
   { href: "/ai-copilot", label: "AI Admin Copilot", icon: Bot },

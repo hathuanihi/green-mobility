@@ -112,3 +112,23 @@ green-mobility:
       base-url: ${GOONG_BASE_URL:https://rsapi.goong.io}
       tiles-url: ${GOONG_TILES_URL:https://tiles.goong.io}
 
+# Payment & Green Wallet Properties (Sprint 5)
+payment:
+  gateway-mode: ${PAYMENT_GATEWAY_MODE:sandbox}
+  public-base-url: ${PAYMENT_PUBLIC_BASE_URL:http://localhost:8080}
+  app-return-scheme: ${PAYMENT_APP_RETURN_SCHEME:greenmobility://payment/result}
+  web-return-url: ${PAYMENT_WEB_RETURN_URL:http://localhost:3000/payment/result}
+  data:
+    key: ${PAYMENT_DATA_KEY:GreenMobilityKeyForDev202632Byte!}
+  vnpay:
+    tmn-code: ${VNPAY_TMN_CODE:DEMOVNPAY}
+    hash-secret: ${VNPAY_HASH_SECRET:DEMOHASHSECRET}
+    url: ${VNPAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+    api-url: ${VNPAY_API_URL:https://sandbox.vnpayment.vn/merchant_webapi/api/transaction}
+  momo:
+    partner-code: ${MOMO_PARTNER_CODE:MOMO}
+    access-key: ${MOMO_ACCESS_KEY:DEMOACCESSKEY}
+    secret-key: ${MOMO_SECRET_KEY:DEMOSECRETKEY}
+    endpoint: ${MOMO_ENDPOINT:https://test-payment.momo.vn}
+
+

@@ -6,6 +6,7 @@ public class ApiResponse<T> {
 
     private boolean success;
     private String message;
+    private String errorCode;
     private T data;
     private Instant timestamp;
 
@@ -16,6 +17,14 @@ public class ApiResponse<T> {
     public ApiResponse(boolean success, String message, T data) {
         this.success = success;
         this.message = message;
+        this.data = data;
+        this.timestamp = Instant.now();
+    }
+
+    public ApiResponse(boolean success, String message, String errorCode, T data) {
+        this.success = success;
+        this.message = message;
+        this.errorCode = errorCode;
         this.data = data;
         this.timestamp = Instant.now();
     }
@@ -37,6 +46,32 @@ public class ApiResponse<T> {
 
     public static <T> ApiResponse<T> error(String message) {
         return new ApiResponse<>(false, message, null);
+    }
+
+    public static <T> ApiResponse<T> error(String message, String errorCode) {
+        ApiResponse<T> resp = new ApiResponse<>();
+        resp.setSuccess(false);
+        resp.setMessage(message);
+        resp.setErrorCode(errorCode);
+        return resp;
+    }
+
+    public static <T> ApiResponse<T> error(String message, String errorCode, T data) {
+        ApiResponse<T> resp = new ApiResponse<>();
+        resp.setSuccess(false);
+        resp.setMessage(message);
+        resp.setErrorCode(errorCode);
+        resp.setData(data);
+        return resp;
+    }
+
+    // Getters and Setters
+    public String getErrorCode() {
+        return errorCode;
+    }
+
+    public void setErrorCode(String errorCode) {
+        this.errorCode = errorCode;
     }
 
     // Getters and Setters
