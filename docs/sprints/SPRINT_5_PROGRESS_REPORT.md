@@ -171,6 +171,20 @@ Tự động đối soát sổ cái 5 điều kiện toàn vẹn ($\Delta = 0$ �
 
 ---
 
+### 8. Cổng Thanh toán Trực tuyến VNPay Sandbox Thật (`VPC-Pay Gateway`)
+Khởi tạo thành công phiên giao dịch trực tuyến với đối tác VNPay , xác thực chữ ký HMAC-SHA512 hợp lệ và hiển thị đầy đủ các phương thức thanh toán VNPAY-QR, Thẻ nội địa và Thẻ quốc tế:
+
+![Cổng Thanh toán VNPay Sandbox](./assets/SPRINT_5/vnpay_sandbox_checkout.png)
+
+---
+
+### 9. Danh mục Ngân hàng Thanh toán Trực tuyến trên VNPay Sandbox
+Màn hình lựa chọn ngân hàng nội địa (Vietcombank, BIDV, Techcombank, NCB, MB...) tích hợp trực tiếp từ cổng VNPay Sandbox, sẵn sàng tiếp nhận thẻ thanh toán thử nghiệm:
+
+![Danh mục Ngân hàng VNPay](./assets/SPRINT_5/vnpay_sandbox_bank_select.png)
+
+---
+
 ## V. Bảng Đối chiếu Tiêu chí Nghiệm thu Sprint 5 (Acceptance Criteria)
 
 Toàn bộ **20 tiêu chí nghiệm thu (AC-01 đến AC-20)** đặc tả trong [SPRINT_5_SPEC.md](./SPRINT_5_SPEC.md) đã được kiểm thử và nghiệm thu thành công (**100% PASS**):
@@ -182,7 +196,7 @@ Toàn bộ **20 tiêu chí nghiệm thu (AC-01 đến AC-20)** đặc tả trong
 | **AC-03** | Chặn số dư âm đối với ví khách hàng và tài xế | Chặn trừ vượt số dư; ràng buộc check constraint `chk_balance_non_negative` kích hoạt bảo vệ. | **PASS** |
 | **AC-04** | Thanh toán chuyến đi bằng Ví Xanh tức thì | Trích nợ ví khách, ghi có 20% doanh thu sàn và 80% ví tài xế trong một transaction nguyên tử. | **PASS** |
 | **AC-05** | Thanh toán tiền mặt (CASH) & ghi nợ chiết khấu | Ghi nhận chính xác nợ phí sàn `DRIVER_CASH_DEBT` 20.000 đ trên cuốc 100.000 đ. | **PASS** |
-| **AC-06** | Khởi tạo phiên thanh toán qua VNPay & MoMo | Sinh đúng `payUrl`, `expiresAt` sau 15 phút, trạng thái ban đầu `PENDING`. | **PASS** |
+| **AC-06** | Khởi tạo phiên thanh toán qua VNPay & MoMo | Sinh đúng `payUrl`, `expiresAt` sau 15 phút, kết nối thành công VNPay Sandbox thật (Merchant: `ZTVXUSJ4`). | **PASS** |
 | **AC-07** | Xác thực chữ ký Webhook IPN bằng HMAC hằng thời gian | Sử dụng `MessageDigest.isEqual` chống timing attack; IPN sai chữ ký bị từ chối 400 Bad Request. | **PASS** |
 | **AC-08** | Idempotency tuyệt đối cho Webhook IPN | Gửi lặp lại IPN cùng `gateway_txn_ref` trả về 200 OK mà không bị ghi sổ hay cộng dồn tiền hai lần. | **PASS** |
 | **AC-09** | Xử lý giao dịch thất bại / hủy thanh toán an toàn | Cập nhật trạng thái `FAILED`, ghi nhận mã và thông điệp lỗi chi tiết. | **PASS** |
@@ -205,6 +219,7 @@ Toàn bộ **20 tiêu chí nghiệm thu (AC-01 đến AC-20)** đặc tả trong
 1. **Tổng kết Thành quả Sprint 5**:
    - Xây dựng thành công hệ thống tài chính toàn diện với nền tảng **Sổ cái Kế toán Kép Bất biến** bảo toàn 100% giá trị tiền tệ ($\Delta_{\text{System}} = 0$ VNĐ).
    - Hoàn thiện chu trình thanh toán 4 phương thức (`CASH`, `GREEN_WALLET`, `VNPAY`, `MOMO`) với cơ chế phân chia tự động 80% thu nhập tài xế và 20% phí dịch vụ sàn.
+   - **Xác thực kết nối VNPay Sandbox thật thành công 100%**: Tạo phiên giao dịch trực tuyến, sinh URL có chữ ký HMAC-SHA512 hợp lệ và tải thành công Cổng thanh toán VNPay thực tế với mã Merchant `ZTVXUSJ4`.
    - Vượt qua kiểm thử tải nặng **200 luồng đồng thời** không xảy ra deadlock nhờ giải thuật sắp xếp khóa ID tài khoản tuần tự.
    - Hoàn thành bộ 85 kiểm thử Backend (**85/85 tests PASS 100%**) và giao diện Web Admin Next.js 14 hoạt động mượt mà trên môi trường live.
 
