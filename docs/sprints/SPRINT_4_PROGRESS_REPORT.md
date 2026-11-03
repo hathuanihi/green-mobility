@@ -3,7 +3,7 @@
 > **Dự án**: Nền tảng gọi xe điện tích hợp hệ thống đo lường, báo cáo và khuyến khích giảm phát thải carbon (Green Mobility)  
 > **Giai đoạn**: **Sprint 4 — Carbon Emission Calculation Engine, Fleet Oversight & AI Operations Copilot**  
 > **Trạng thái tổng thể**: **HOÀN THÀNH 100% CÁC HẠNG MỤC SPRINT 4**  
-> **Thời gian thực hiện theo Đề cương KLTN**: 26/10/2026 – 08/11/2026 (Hoàn thành sớm: 05/10/2026)  
+> **Thời gian hoàn thành**: 03/11/2026
 > **Sinh viên thực hiện**:  
 > - **Phạm Hà Anh Thư** — MSSV: 23521544  
 > - **Nguyễn Minh Thiện** — MSSV: 23521484  
