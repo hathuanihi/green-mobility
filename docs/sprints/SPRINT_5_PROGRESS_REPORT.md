@@ -133,7 +133,7 @@ $$
 Nhằm ngăn chặn deadlock ở tầng cơ sở dữ liệu khi nhiều luồng xử lý giao dịch đồng thời trên cùng một tập tài khoản, hệ thống áp dụng kỹ thuật sắp xếp danh sách định danh tài khoản theo thứ tự tăng dần trước khi thực thi truy vấn khóa độc quyền (`SELECT ... FOR UPDATE`):
 
 $$
-\text{AccountList} = \text{sort\_by\_uuid}(\{\text{Acc}_1, \text{Acc}_2, \dots, \text{Acc}_k\})
+\text{AccountList} = \text{SortByUUID}(\{\text{Acc}_1, \text{Acc}_2, \dots, \text{Acc}_k\})
 $$
 
 Giải thuật đã được kiểm chứng qua kiểm thử tải **200 luồng đồng thời** (`LedgerServiceTest.testConcurrentPosting_NoDeadlock_200Threads`), đạt kết quả **100% thành công**, không phát sinh deadlock.
