@@ -96,25 +96,52 @@ sequenceDiagram
 ## III. Các Đột Phá Kỹ Thuật & Kiến Trúc Trọng Tâm
 
 ### 1. Nguyên lý Sổ Cái Kép Bất Biến (Zero-Sum Double-Entry Invariant)
-Mọi biến động tài chính đều được hạch toán đồng thời giữa các tài khoản đối ứng, bảo toàn tuyệt đối giá trị tiền tệ:
-$$\sum_{i=1}^{n} \text{Debit}_i = \sum_{j=1}^{m} \text{Credit}_j \implies \Delta_{\text{System}} = 0.0000\,\text{VNĐ}$$
 
-Bốn kịch bản hạch toán chuẩn hóa:
-1. **Ví Xanh (`TRIP_PAYMENT_WALLET`)**: $\text{Debit } \texttt{USER\_WALLET} = A$; $\text{Credit } \texttt{REVENUE} = 20\% A$; $\text{Credit } \texttt{DRIVER\_WALLET} = 80\% A$.
-2. **Tiền mặt (`TRIP_PAYMENT_CASH`)**: $\text{Debit } \texttt{DRIVER\_CASH\_DEBT} = 20\% A$; $\text{Credit } \texttt{REVENUE} = 20\% A$.
-3. **Cổng thanh toán (`TRIP_PAYMENT_GATEWAY`)**: $\text{Debit } \texttt{GATEWAY\_CLEARING} = A$; $\text{Credit } \texttt{REVENUE} = 20\% A$; $\text{Credit } \texttt{DRIVER\_WALLET} = 80\% A$.
+Mọi biến động tài chính đều được hạch toán đồng thời giữa các tài khoản đối ứng, bảo toàn tuyệt đối giá trị tiền tệ:
+
+$$
+\sum_{i=1}^{n} \text{Debit}_i = \sum_{j=1}^{m} \text{Credit}_j
+\implies \Delta_{\text{System}} = 0.0000\,\text{VNĐ}
+$$
+
+**Bốn kịch bản hạch toán chuẩn hóa:**
+
+1. **Ví Xanh (`TRIP_PAYMENT_WALLET`)**:
+   - Debit `USER_WALLET` = A
+   - Credit `REVENUE` = 20% × A
+   - Credit `DRIVER_WALLET` = 80% × A
+
+2. **Tiền mặt (`TRIP_PAYMENT_CASH`)**:
+   - Debit `DRIVER_CASH_DEBT` = 20% × A
+   - Credit `REVENUE` = 20% × A
+
+3. **Cổng thanh toán (`TRIP_PAYMENT_GATEWAY`)**:
+   - Debit `GATEWAY_CLEARING` = A
+   - Credit `REVENUE` = 20% × A
+   - Credit `DRIVER_WALLET` = 80% × A
+
 4. **Rút tiền tài xế (`WITHDRAWAL`)**:
-   - Khi tạo yêu cầu: $\text{Debit } \texttt{DRIVER\_WALLET} = W$; $\text{Credit } \texttt{PAYOUT\_CLEARING} = W$ (phong tỏa quỹ).
-   - Khi Admin duyệt: $\text{Debit } \texttt{PAYOUT\_CLEARING} = W$; $\text{Credit } \texttt{BANK\_OUTFLOW} = W$.
+   - **Khi tạo yêu cầu:**
+     - Debit `DRIVER_WALLET` = W
+     - Credit `PAYOUT_CLEARING` = W (phong tỏa quỹ).
+   - **Khi Admin duyệt:**
+     - Debit `PAYOUT_CLEARING` = W
+     - Credit `BANK_OUTFLOW` = W
 
 ### 2. Giải thuật Sắp xếp Khóa Tài Khoản Chống Deadlock (Sequential ID Locking)
+
 Nhằm ngăn chặn deadlock ở tầng cơ sở dữ liệu khi nhiều luồng xử lý giao dịch đồng thời trên cùng một tập tài khoản, hệ thống áp dụng kỹ thuật sắp xếp danh sách định danh tài khoản tăng dần trước khi thực thi truy vấn khóa độc quyền (`SELECT ... FOR UPDATE`):
-$$\text{AccountList} = \text{sort\_by\_uuid}(\{ \text{Acc}_1, \text{Acc}_2, \dots, \text{Acc}_k \})$$
-Giải thuật đã được kiểm chứng qua kiểm thử tải **200 luồng đồng thời** (`LedgerServiceTest.testConcurrentPosting_NoDeadlock_200Threads`) đạt kết quả 100% thành công không phát sinh deadlock.
+
+$$
+\text{AccountList} = \text{sort\_by\_uuid}(\{\text{Acc}_1, \text{Acc}_2, \dots, \text{Acc}_k\})
+$$
+
+Giải thuật đã được kiểm chứng qua kiểm thử tải **200 luồng đồng thời** (`LedgerServiceTest.testConcurrentPosting_NoDeadlock_200Threads`), đạt kết quả 100% thành công, không phát sinh deadlock.
 
 ### 3. Bảo mật HMAC Hằng Thời Gian & Mã Hóa Dữ Liệu Nhạy Cảm
+
 - **Chống Timing Attack**: Xác thực chữ ký số Webhook IPN bằng hàm so sánh thời gian hằng số `MessageDigest.isEqual(expectedHmac, receivedHmac)`.
-- **Mã hóa STK Ngân Hàng**: Sử dụng thuật toán AES-256-GCM với IV ngẫu nhiên 12 bytes; cơ sở dữ liệu chỉ lưu chuỗi mã hóa và 4 số cuối (`bank_account_last4`) phục vụ đối soát giao diện, đáp ứng quy chuẩn an toàn thanh toán.
+- **Mã hóa STK Ngân Hàng**: Sử dụng thuật toán AES-256-GCM với IV ngẫu nhiên 12 bytes. Cơ sở dữ liệu chỉ lưu chuỗi mã hóa và 4 số cuối (`bank_account_last4`) phục vụ đối soát giao diện, đáp ứng quy chuẩn an toàn thanh toán.
 
 ---
 
