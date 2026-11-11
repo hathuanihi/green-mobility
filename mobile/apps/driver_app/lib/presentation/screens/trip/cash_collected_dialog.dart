@@ -125,7 +125,7 @@ class _CashCollectedDialogState extends State<CashCollectedDialog> {
             child: Column(
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.between,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('Số tiền cần thu khách:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                     Text(
@@ -136,7 +136,7 @@ class _CashCollectedDialogState extends State<CashCollectedDialog> {
                 ),
                 const Divider(height: 20),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.between,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('Phí nền tảng (20%):', style: TextStyle(fontSize: 13, color: Colors.black54)),
                     Text('-${_formatVnd(widget.commissionVnd)} đ', style: const TextStyle(fontSize: 13, color: Colors.red)),
@@ -144,7 +144,7 @@ class _CashCollectedDialogState extends State<CashCollectedDialog> {
                 ),
                 const SizedBox(height: 4),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.between,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('Thu nhập thực nhận:', style: TextStyle(fontSize: 13, color: Colors.black54)),
                     Text('${_formatVnd(widget.driverAmountVnd)} đ', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),

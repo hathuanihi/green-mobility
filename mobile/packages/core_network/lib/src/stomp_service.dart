@@ -88,6 +88,35 @@ class StompService {
     }
   }
 
+  /// Đăng ký lắng nghe một topic STOMP bất kỳ dưới dạng Stream JSON
+  Stream<Map<String, dynamic>> subscribe(String destination) {
+    final controller = StreamController<Map<String, dynamic>>();
+    void Function({Map<String, String>? unsubscribeHeaders})? unsub;
+
+    if (_client != null && _isConnected) {
+      unsub = _client!.subscribe(
+        destination: destination,
+        callback: (StompFrame frame) {
+          if (frame.body != null && !controller.isClosed) {
+            try {
+              final data = jsonDecode(frame.body!) as Map<String, dynamic>;
+              controller.add(data);
+            } catch (e) {
+              debugPrint('[StompService] Lỗi parse message từ $destination: $e');
+            }
+          }
+        },
+      );
+    }
+
+    controller.onCancel = () {
+      unsub?.call();
+      controller.close();
+    };
+
+    return controller.stream;
+  }
+
   /// Khách hàng lắng nghe luồng vị trí GPS thời gian thực của tài xế
   void Function({Map<String, String>? unsubscribeHeaders})? subscribeDriverLocation(
     String driverId,

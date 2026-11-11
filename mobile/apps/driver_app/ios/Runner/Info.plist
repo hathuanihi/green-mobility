@@ -7,7 +7,20 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Driver App</string>
+	<string>Green Driver</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Ứng dụng cần quyền vị trí để nhận cuốc xe điện gần nhất và dẫn đường Turn-by-Turn.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Ứng dụng cần quyền vị trí nền để cập nhật lộ trình chuyến đi và tính quãng đường giảm phát thải CO2.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Ứng dụng cần quyền Camera để chụp giấy tờ KYC và quét xác thực khuôn mặt sinh trắc học khi bật ca.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Ứng dụng cần quyền Thư viện ảnh để tải lên giấy tờ đăng ký KYC và ảnh xác thực.</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

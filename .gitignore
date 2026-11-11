@@ -43,8 +43,19 @@ mobile/**/android/.gradle/
 mobile/**/android/local.properties
 mobile/**/ios/Pods/
 mobile/**/ios/.symlinks/
+mobile/**/ios/Podfile.lock
 mobile/**/ios/Flutter/Flutter.framework
 mobile/**/ios/Flutter/Flutter.podspec
+mobile/**/macos/Pods/
+mobile/**/macos/.symlinks/
+mobile/**/macos/Podfile.lock
+mobile/**/macos/Flutter/ephemeral/
+
+# Python & Scripts
+__pycache__/
+*.py[cod]
+.venv/
+venv/
 
 # Environment & Secrets
 .env

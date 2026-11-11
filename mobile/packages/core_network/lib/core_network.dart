@@ -11,6 +11,6 @@ export 'src/earnings_api.dart';
 export 'src/stomp_service.dart';
 
 class AppConfig {
-  static const String defaultApiUrl = 'http://localhost:8080/api/v1';
-  static const String defaultWsUrl = 'ws://localhost:8080/api/v1/ws-connect';
+  static const String defaultApiUrl = 'http://127.0.0.1:8080/api/v1';
+  static const String defaultWsUrl = 'ws://127.0.0.1:8080/api/v1/ws-connect';
 }

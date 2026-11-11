@@ -12,6 +12,7 @@ enum PaymentMethod {
   static PaymentMethod fromString(String val) {
     switch (val.toUpperCase()) {
       case 'GREEN_WALLET':
+      case 'WALLET':
         return PaymentMethod.greenWallet;
       case 'VNPAY':
         return PaymentMethod.vnpay;
@@ -20,6 +21,24 @@ enum PaymentMethod {
       case 'CASH':
       default:
         return PaymentMethod.cash;
+    }
+  }
+
+  static String getLabel(String? method) {
+    switch (method?.toUpperCase()) {
+      case 'CASH':
+        return 'Tiền mặt';
+      case 'GREEN_WALLET':
+      case 'WALLET':
+        return 'Ví Xanh (Green Wallet)';
+      case 'VNPAY':
+        return 'VNPay QR / Thẻ ATM';
+      case 'MOMO':
+        return 'Ví MoMo';
+      case 'CARD':
+        return 'Thẻ ngân hàng';
+      default:
+        return method ?? 'Tiền mặt';
     }
   }
 }

@@ -6,7 +6,7 @@ import 'token_storage.dart';
 class ApiClient {
   static String get defaultBaseUrl {
     if (kIsWeb) {
-      return 'http://localhost:8080/api/v1';
+      return 'http://127.0.0.1:8080/api/v1';
     }
     try {
       if (Platform.isAndroid) {
@@ -15,7 +15,7 @@ class ApiClient {
     } catch (_) {
       // Platform check may fail on Web
     }
-    return 'http://localhost:8080/api/v1';
+    return 'http://127.0.0.1:8080/api/v1';
   }
 
   final Dio dio;

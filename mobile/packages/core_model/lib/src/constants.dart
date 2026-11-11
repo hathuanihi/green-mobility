@@ -158,28 +158,3 @@ class TripStatus {
         status == inTrip;
   }
 }
-
-class PaymentMethod {
-  static const String cash = 'CASH';
-  static const String wallet = 'WALLET';
-  static const String card = 'CARD';
-
-  static String getLabel(String? method) {
-    switch (method) {
-      case cash:
-        return 'Tiền mặt';
-      case wallet:
-        return 'Ví điện tử';
-      case card:
-        return 'Thẻ ngân hàng';
-      default:
-        return method ?? 'Tiền mặt';
-    }
-  }
-}
-
-class PaymentStatus {
-  static const String pending = 'PENDING';
-  static const String paid = 'PAID';
-  static const String refunded = 'REFUNDED';
-}

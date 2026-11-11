@@ -26,7 +26,7 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
   late PresetLocation _selectedDropoff;
 
   String _selectedVehicleType = VehicleTypes.electricMotorbike;
-  String _selectedPaymentMethod = PaymentMethod.cash;
+  String _selectedPaymentMethod = PaymentMethod.cash.value;
 
   bool _isLoadingEstimate = false;
   bool _isRequestingTrip = false;
@@ -450,16 +450,20 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
                       dropdownColor: GreenColors.surfaceDark,
                       items: [
                         DropdownMenuItem(
-                          value: PaymentMethod.cash,
-                          child: Text(PaymentMethod.getLabel(PaymentMethod.cash), style: const TextStyle(color: Colors.white)),
+                          value: PaymentMethod.cash.value,
+                          child: Text(PaymentMethod.getLabel(PaymentMethod.cash.value), style: const TextStyle(color: Colors.white)),
                         ),
                         DropdownMenuItem(
-                          value: PaymentMethod.wallet,
-                          child: Text(PaymentMethod.getLabel(PaymentMethod.wallet), style: const TextStyle(color: Colors.white)),
+                          value: PaymentMethod.greenWallet.value,
+                          child: Text(PaymentMethod.getLabel(PaymentMethod.greenWallet.value), style: const TextStyle(color: Colors.white)),
                         ),
                         DropdownMenuItem(
-                          value: PaymentMethod.card,
-                          child: Text(PaymentMethod.getLabel(PaymentMethod.card), style: const TextStyle(color: Colors.white)),
+                          value: PaymentMethod.vnpay.value,
+                          child: Text(PaymentMethod.getLabel(PaymentMethod.vnpay.value), style: const TextStyle(color: Colors.white)),
+                        ),
+                        DropdownMenuItem(
+                          value: PaymentMethod.momo.value,
+                          child: Text(PaymentMethod.getLabel(PaymentMethod.momo.value), style: const TextStyle(color: Colors.white)),
                         ),
                       ],
                       onChanged: (val) {
