@@ -1,17 +1,27 @@
 package com.greenmobility.modules.payment.service;
 
 import com.greenmobility.common.exception.PaymentBusinessException;
+import com.greenmobility.common.platform.service.OutboxService;
+import com.greenmobility.common.platform.service.PlatformSettingsService;
 import com.greenmobility.config.RabbitMQConfig;
-import com.greenmobility.modules.payment.domain.*;
-import com.greenmobility.modules.payment.dto.*;
+import com.greenmobility.modules.ledger.api.PostingEntry;
+import com.greenmobility.modules.ledger.api.PostingRequest;
+import com.greenmobility.modules.ledger.domain.AccountType;
+import com.greenmobility.modules.ledger.domain.EntryType;
+import com.greenmobility.modules.ledger.domain.LedgerAccount;
+import com.greenmobility.modules.ledger.domain.LedgerTransaction;
+import com.greenmobility.modules.ledger.domain.LedgerTxType;
+import com.greenmobility.modules.ledger.service.LedgerService;
+import com.greenmobility.modules.payment.domain.Payment;
+import com.greenmobility.modules.payment.dto.CheckoutResponse;
+import com.greenmobility.modules.payment.dto.PaymentDto;
+import com.greenmobility.modules.payment.dto.PaymentMethodDto;
 import com.greenmobility.modules.payment.gateway.*;
-import com.greenmobility.modules.payment.ledger.*;
 import com.greenmobility.modules.payment.repository.PaymentRepository;
 import com.greenmobility.modules.payment.repository.PaymentWebhookEventRepository;
 import com.greenmobility.modules.trip.api.TripModuleApi;
 import com.greenmobility.modules.trip.api.TripSnapshotDto;
 import com.greenmobility.modules.trip.entity.PaymentStatus;
-import com.greenmobility.modules.trip.entity.TripStatus;
 import com.greenmobility.modules.trip.event.TripCompletedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,29 +78,38 @@ public class PaymentService {
         this.gatewayProperties = gatewayProperties;
     }
 
-    /**
-     * Consumer entrypoint: initiate payment when trip is completed. Idempotent by trip_id.
-     */
     @Transactional
     public Payment initiatePaymentForTrip(TripCompletedEvent event) {
         UUID tripId = event.getTripId();
-        Optional<Payment> existing = paymentRepository.findByTripId(tripId);
+        Optional<Payment> existing = paymentRepository.findFirstByTripIdOrderByCreatedAtDesc(tripId);
         if (existing.isPresent()) {
-            log.info("Payment already initiated for trip {}: id={}, status={}", tripId, existing.get().getId(), existing.get().getStatus());
+            log.info("Payment already initiated for trip {}: id={}, status={}",
+                    tripId, existing.get().getId(), existing.get().getStatus());
             return existing.get();
         }
 
         UUID driverUserId = tripModuleApi.getDriverUserId(event.getDriverId());
-        BigDecimal fare = event.getFinalAmountVnd() != null ? event.getFinalAmountVnd() : BigDecimal.ZERO;
-        BigDecimal commRate = settingsService.getCommissionRate();
-        CommissionService.CommissionSplit split = commissionService.calculateSplit(fare, commRate);
+        BigDecimal finalFare = event.getFinalAmountVnd() != null ? event.getFinalAmountVnd() : BigDecimal.ZERO;
+        BigDecimal grossFare = event.getFareAmountVnd() != null ? event.getFareAmountVnd() : finalFare;
+        if (grossFare.compareTo(finalFare) < 0) {
+            grossFare = finalFare;
+        }
+        long netVnd = Math.max(0L, finalFare.longValue());
+        long grossVnd = Math.max(netVnd, grossFare.longValue());
+        long discountVnd = grossVnd - netVnd;
+
+        CommissionService.CommissionSplit split = commissionService.calculateSplit(
+                BigDecimal.valueOf(grossVnd), settingsService.getCommissionRate());
 
         Payment payment = new Payment();
         payment.setTripId(tripId);
         payment.setCustomerId(event.getCustomerId());
         payment.setDriverUserId(driverUserId);
-        payment.setMethod(event.getPaymentMethod() != null ? event.getPaymentMethod() : "CASH");
-        payment.setAmountVnd(split.fareVnd());
+        String rawMethod = event.getPaymentMethod() != null ? event.getPaymentMethod() : "CASH";
+        payment.setMethod("WALLET".equalsIgnoreCase(rawMethod) ? "GREEN_WALLET" : rawMethod.toUpperCase());
+        payment.setAmountVnd(netVnd);
+        payment.setGrossFareVnd(grossVnd);
+        payment.setDiscountVnd(discountVnd);
         payment.setCommissionRate(split.commissionRate());
         payment.setCommissionVnd(split.commissionVnd());
         payment.setDriverAmountVnd(split.driverAmountVnd());
@@ -98,16 +117,13 @@ public class PaymentService {
 
         Payment saved = paymentRepository.save(payment);
 
-        // If fare is 0, settle immediately
-        if (split.fareVnd() == 0) {
+        if (netVnd == 0L) {
             settleZeroFarePayment(saved);
             return saved;
         }
 
-        // Automatic settlement based on initial method
-        String method = payment.getMethod();
-        if ("GREEN_WALLET".equalsIgnoreCase(method) || "WALLET".equalsIgnoreCase(method)) {
-            payment.setMethod("GREEN_WALLET");
+        String method = saved.getMethod();
+        if ("GREEN_WALLET".equalsIgnoreCase(method)) {
             try {
                 settle(saved.getId(), "GREEN_WALLET", null);
             } catch (PaymentBusinessException ex) {
@@ -125,15 +141,12 @@ public class PaymentService {
             saved.setStatus("PENDING");
             paymentRepository.save(saved);
             tripModuleApi.markPaymentStatus(tripId, PaymentStatus.PENDING);
-            notifyDriverCashRequired(saved);
+            notifyDriverCashRequired(saved, event.getDriverId());
         }
 
         return saved;
     }
 
-    /**
-     * Customer checkout: choose method and obtain payUrl or settle synchronously.
-     */
     @Transactional
     public CheckoutResponse createCheckout(UUID customerId, UUID tripId, String method, String clientIp) {
         TripSnapshotDto trip = tripModuleApi.getTrip(tripId)
@@ -149,14 +162,22 @@ public class PaymentService {
 
         Payment payment = paymentRepository.findActivePaymentByTripIdWithLock(tripId)
                 .orElseGet(() -> {
-                    BigDecimal fare = trip.finalAmount() != null ? trip.finalAmount() : BigDecimal.ZERO;
-                    CommissionService.CommissionSplit split = commissionService.calculateSplit(fare, settingsService.getCommissionRate());
+                    BigDecimal finalFare = trip.finalAmount() != null ? trip.finalAmount() : BigDecimal.ZERO;
+                    BigDecimal grossFare = trip.fareAmount() != null ? trip.fareAmount() : finalFare;
+                    long netVnd = Math.max(0L, finalFare.longValue());
+                    long grossVnd = Math.max(netVnd, grossFare.longValue());
+                    long discountVnd = grossVnd - netVnd;
+                    CommissionService.CommissionSplit split = commissionService.calculateSplit(
+                            BigDecimal.valueOf(grossVnd), settingsService.getCommissionRate());
+
                     Payment p = new Payment();
                     p.setTripId(tripId);
                     p.setCustomerId(customerId);
                     p.setDriverUserId(trip.driverUserId());
                     p.setMethod(method);
-                    p.setAmountVnd(split.fareVnd());
+                    p.setAmountVnd(netVnd);
+                    p.setGrossFareVnd(grossVnd);
+                    p.setDiscountVnd(discountVnd);
                     p.setCommissionRate(split.commissionRate());
                     p.setCommissionVnd(split.commissionVnd());
                     p.setDriverAmountVnd(split.driverAmountVnd());
@@ -168,8 +189,13 @@ public class PaymentService {
             throw new PaymentBusinessException(HttpStatus.CONFLICT, "PAYMENT_ALREADY_PAID", "Giao dịch đã thanh toán thành công");
         }
 
-        String normalizedMethod = method.toUpperCase();
+        String normalizedMethod = "WALLET".equalsIgnoreCase(method) ? "GREEN_WALLET" : method.toUpperCase();
         payment.setMethod(normalizedMethod);
+
+        if (payment.getAmountVnd() == 0L) {
+            settleZeroFarePayment(payment);
+            return new CheckoutResponse(payment.getId(), "PAID", normalizedMethod, 0L, null, null, null, null);
+        }
 
         if ("GREEN_WALLET".equals(normalizedMethod)) {
             LedgerAccount wallet = ledgerService.getOrCreateUserWallet(customerId);
@@ -189,11 +215,10 @@ public class PaymentService {
             payment.setStatus("PENDING");
             Payment saved = paymentRepository.save(payment);
             tripModuleApi.markPaymentStatus(tripId, PaymentStatus.PENDING);
-            notifyDriverCashRequired(saved);
+            notifyDriverCashRequired(saved, trip.driverId());
             return new CheckoutResponse(saved.getId(), "PENDING", "CASH", saved.getAmountVnd(), null, null, null, null);
         }
 
-        // Online Gateway: VNPAY or MOMO
         if (!"VNPAY".equals(normalizedMethod) && !"MOMO".equals(normalizedMethod)) {
             throw new PaymentBusinessException(HttpStatus.BAD_REQUEST, "PAYMENT_INVALID_METHOD", "Phương thức thanh toán không hợp lệ: " + method);
         }
@@ -233,9 +258,6 @@ public class PaymentService {
         );
     }
 
-    /**
-     * Single source of truth to mark payment as PAID (R3, R4, R5, §7.2).
-     */
     @Transactional
     public void settle(UUID paymentId, String source, String gatewayTxnNo) {
         Payment payment = paymentRepository.findByIdWithLock(paymentId)
@@ -251,91 +273,137 @@ public class PaymentService {
                     paymentId, payment.getStatus(), source);
         }
 
-        long f = payment.getAmountVnd();
-        long c = payment.getCommissionVnd();
-        long d = payment.getDriverAmountVnd();
+        long fNet = payment.getAmountVnd() != null ? payment.getAmountVnd() : 0L;
+        long discountV = payment.getDiscountVnd() != null ? payment.getDiscountVnd() : 0L;
+        long c = payment.getCommissionVnd() != null ? payment.getCommissionVnd() : 0L;
+        long d = payment.getDriverAmountVnd() != null ? payment.getDriverAmountVnd() : 0L;
         String method = payment.getMethod();
 
         UUID ledgerTxId = null;
 
-        if (f > 0) {
+        if (fNet == 0L) {
+            settleZeroFarePayment(payment);
+            return;
+        }
+
+        LedgerAccount platformRev = ledgerService.getSystemAccount(AccountType.PLATFORM_REVENUE);
+        LedgerAccount driverEarnings = payment.getDriverUserId() != null
+                ? ledgerService.getOrCreateDriverEarningsAccount(payment.getDriverUserId())
+                : platformRev;
+
+        if ("GREEN_WALLET".equalsIgnoreCase(method)) {
+            List<PostingEntry> entries = new ArrayList<>();
+            LedgerAccount userWallet = ledgerService.getOrCreateUserWallet(payment.getCustomerId());
+            entries.add(new PostingEntry(userWallet.getId(), EntryType.DEBIT, BigDecimal.valueOf(fNet)));
+            if (discountV > 0) {
+                LedgerAccount promoExpense = ledgerService.getSystemAccount(AccountType.PROMO_EXPENSE);
+                entries.add(new PostingEntry(promoExpense.getId(), EntryType.DEBIT, BigDecimal.valueOf(discountV)));
+            }
+            if (d > 0) {
+                entries.add(new PostingEntry(driverEarnings.getId(), EntryType.CREDIT, BigDecimal.valueOf(d)));
+            }
+            if (c > 0) {
+                entries.add(new PostingEntry(platformRev.getId(), EntryType.CREDIT, BigDecimal.valueOf(c)));
+            }
+
+            LedgerTransaction tx = ledgerService.post(new PostingRequest(
+                    null, payment.getTripId(), LedgerTxType.TRIP_PAYMENT_WALLET,
+                    "Thanh toan chuyen di bang Vi Xanh", "PAYMENT-TX-" + payment.getId(),
+                    "PAYMENT", payment.getId(), null, entries
+            ));
+            ledgerTxId = tx.getId();
+
+        } else if ("VNPAY".equalsIgnoreCase(method) || "MOMO".equalsIgnoreCase(method) || "MOCK".equalsIgnoreCase(method)) {
+            List<PostingEntry> entries = new ArrayList<>();
+            LedgerAccount gatewayClearing = ledgerService.getSystemAccount(AccountType.GATEWAY_CLEARING);
+            entries.add(new PostingEntry(gatewayClearing.getId(), EntryType.DEBIT, BigDecimal.valueOf(fNet)));
+            if (discountV > 0) {
+                LedgerAccount promoExpense = ledgerService.getSystemAccount(AccountType.PROMO_EXPENSE);
+                entries.add(new PostingEntry(promoExpense.getId(), EntryType.DEBIT, BigDecimal.valueOf(discountV)));
+            }
+            if (d > 0) {
+                entries.add(new PostingEntry(driverEarnings.getId(), EntryType.CREDIT, BigDecimal.valueOf(d)));
+            }
+            if (c > 0) {
+                entries.add(new PostingEntry(platformRev.getId(), EntryType.CREDIT, BigDecimal.valueOf(c)));
+            }
+
+            LedgerTransaction tx = ledgerService.post(new PostingRequest(
+                    null, payment.getTripId(), LedgerTxType.TRIP_PAYMENT_GATEWAY,
+                    "Thanh toan chuyen di qua cong " + method, "PAYMENT-TX-" + payment.getId(),
+                    "PAYMENT", payment.getId(), null, entries
+            ));
+            ledgerTxId = tx.getId();
+
+        } else if ("CASH".equalsIgnoreCase(method)) {
+            if (c > 0 && payment.getDriverUserId() != null) {
+                LedgerTransaction tx = ledgerService.post(new PostingRequest(
+                        null, payment.getTripId(), LedgerTxType.TRIP_PAYMENT_CASH,
+                        "Thu phi hoa hong chuyen tien mat", "PAYMENT-TX-" + payment.getId(),
+                        "PAYMENT", payment.getId(), null,
+                        List.of(
+                                new PostingEntry(driverEarnings.getId(), EntryType.DEBIT, BigDecimal.valueOf(c)),
+                                new PostingEntry(platformRev.getId(), EntryType.CREDIT, BigDecimal.valueOf(c))
+                        )
+                ));
+                ledgerTxId = tx.getId();
+            }
+            if (discountV > 0 && payment.getDriverUserId() != null) {
+                LedgerAccount promoExpense = ledgerService.getSystemAccount(AccountType.PROMO_EXPENSE);
+                LedgerTransaction subsidyTx = ledgerService.post(new PostingRequest(
+                        null, payment.getTripId(), LedgerTxType.VOUCHER_SUBSIDY,
+                        "Tro gia voucher chuyen tien mat", "PAYMENT-SUBSIDY-" + payment.getId(),
+                        "VOUCHER_SUBSIDY", payment.getId(), null,
+                        List.of(
+                                new PostingEntry(promoExpense.getId(), EntryType.DEBIT, BigDecimal.valueOf(discountV)),
+                                new PostingEntry(driverEarnings.getId(), EntryType.CREDIT, BigDecimal.valueOf(discountV))
+                        )
+                ));
+                if (ledgerTxId == null) {
+                    ledgerTxId = subsidyTx.getId();
+                }
+            }
+        }
+
+        finalizePaidPayment(payment, ledgerTxId, gatewayTxnNo);
+    }
+
+    private void settleZeroFarePayment(Payment payment) {
+        if ("PAID".equals(payment.getStatus())) {
+            return;
+        }
+        long discountV = payment.getDiscountVnd() != null ? payment.getDiscountVnd() : 0L;
+        long c = payment.getCommissionVnd() != null ? payment.getCommissionVnd() : 0L;
+        long d = payment.getDriverAmountVnd() != null ? payment.getDriverAmountVnd() : 0L;
+        UUID ledgerTxId = null;
+
+        if (discountV > 0 && (c > 0 || d > 0)) {
+            LedgerAccount promoExpense = ledgerService.getSystemAccount(AccountType.PROMO_EXPENSE);
             LedgerAccount platformRev = ledgerService.getSystemAccount(AccountType.PLATFORM_REVENUE);
             LedgerAccount driverEarnings = payment.getDriverUserId() != null
                     ? ledgerService.getOrCreateDriverEarningsAccount(payment.getDriverUserId())
                     : platformRev;
 
             List<PostingEntry> entries = new ArrayList<>();
-
-            if ("GREEN_WALLET".equalsIgnoreCase(method)) {
-                LedgerAccount userWallet = ledgerService.getOrCreateUserWallet(payment.getCustomerId());
-                entries.add(new PostingEntry(userWallet.getId(), EntryType.DEBIT, BigDecimal.valueOf(f)));
-                if (d > 0) {
-                    entries.add(new PostingEntry(driverEarnings.getId(), EntryType.CREDIT, BigDecimal.valueOf(d)));
-                }
-                if (c > 0) {
-                    entries.add(new PostingEntry(platformRev.getId(), EntryType.CREDIT, BigDecimal.valueOf(c)));
-                }
-
-                PostingRequest postReq = new PostingRequest(
-                        null,
-                        payment.getTripId(),
-                        LedgerTxType.TRIP_PAYMENT_WALLET,
-                        "Thanh toan chuyen di bang Vi Xanh",
-                        "PAYMENT-TX-" + payment.getId(),
-                        "PAYMENT",
-                        payment.getId(),
-                        null,
-                        entries
-                );
-                LedgerTransaction tx = ledgerService.post(postReq);
-                ledgerTxId = tx.getId();
-
-            } else if ("VNPAY".equalsIgnoreCase(method) || "MOMO".equalsIgnoreCase(method) || "MOCK".equalsIgnoreCase(method)) {
-                LedgerAccount gatewayClearing = ledgerService.getSystemAccount(AccountType.GATEWAY_CLEARING);
-                entries.add(new PostingEntry(gatewayClearing.getId(), EntryType.DEBIT, BigDecimal.valueOf(f)));
-                if (d > 0) {
-                    entries.add(new PostingEntry(driverEarnings.getId(), EntryType.CREDIT, BigDecimal.valueOf(d)));
-                }
-                if (c > 0) {
-                    entries.add(new PostingEntry(platformRev.getId(), EntryType.CREDIT, BigDecimal.valueOf(c)));
-                }
-
-                PostingRequest postReq = new PostingRequest(
-                        null,
-                        payment.getTripId(),
-                        LedgerTxType.TRIP_PAYMENT_GATEWAY,
-                        "Thanh toan chuyen di qua cong " + method,
-                        "PAYMENT-TX-" + payment.getId(),
-                        "PAYMENT",
-                        payment.getId(),
-                        null,
-                        entries
-                );
-                LedgerTransaction tx = ledgerService.post(postReq);
-                ledgerTxId = tx.getId();
-
-            } else if ("CASH".equalsIgnoreCase(method)) {
-                if (c > 0 && driverEarnings != null) {
-                    entries.add(new PostingEntry(driverEarnings.getId(), EntryType.DEBIT, BigDecimal.valueOf(c)));
-                    entries.add(new PostingEntry(platformRev.getId(), EntryType.CREDIT, BigDecimal.valueOf(c)));
-
-                    PostingRequest postReq = new PostingRequest(
-                            null,
-                            payment.getTripId(),
-                            LedgerTxType.TRIP_PAYMENT_CASH,
-                            "Thu phi hoa hong chuyen tien mat",
-                            "PAYMENT-TX-" + payment.getId(),
-                            "PAYMENT",
-                            payment.getId(),
-                            null,
-                            entries
-                    );
-                    LedgerTransaction tx = ledgerService.post(postReq);
-                    ledgerTxId = tx.getId();
-                }
+            entries.add(new PostingEntry(promoExpense.getId(), EntryType.DEBIT, BigDecimal.valueOf(discountV)));
+            if (d > 0) {
+                entries.add(new PostingEntry(driverEarnings.getId(), EntryType.CREDIT, BigDecimal.valueOf(d)));
             }
+            if (c > 0) {
+                entries.add(new PostingEntry(platformRev.getId(), EntryType.CREDIT, BigDecimal.valueOf(c)));
+            }
+            LedgerTransaction tx = ledgerService.post(new PostingRequest(
+                    null, payment.getTripId(), LedgerTxType.VOUCHER_SUBSIDY,
+                    "Tro gia voucher giam 100% cuoc xe", "PAYMENT-SUBSIDY-" + payment.getId(),
+                    "VOUCHER_SUBSIDY", payment.getId(), null, entries
+            ));
+            ledgerTxId = tx.getId();
         }
 
+        finalizePaidPayment(payment, ledgerTxId, null);
+    }
+
+    private void finalizePaidPayment(Payment payment, UUID ledgerTxId, String gatewayTxnNo) {
         payment.setStatus("PAID");
         payment.setPaidAt(Instant.now());
         payment.setLedgerTransactionId(ledgerTxId);
@@ -346,28 +414,20 @@ public class PaymentService {
 
         tripModuleApi.markPaymentStatus(payment.getTripId(), PaymentStatus.PAID);
 
-        // Record outbox event
         Map<String, Object> outboxPayload = Map.of(
-                "paymentId", payment.getId(),
-                "tripId", payment.getTripId(),
-                "customerId", payment.getCustomerId(),
+                "paymentId", payment.getId().toString(),
+                "tripId", payment.getTripId().toString(),
+                "customerId", payment.getCustomerId().toString(),
                 "driverUserId", payment.getDriverUserId() != null ? payment.getDriverUserId().toString() : "",
                 "method", payment.getMethod(),
                 "amountVnd", payment.getAmountVnd(),
-                "commissionVnd", payment.getCommissionVnd(),
+                "discountVnd", payment.getDiscountVnd() != null ? payment.getDiscountVnd() : 0L,
+                "commissionVnd", payment.getCommissionVnd() != null ? payment.getCommissionVnd() : 0L,
                 "paidAt", payment.getPaidAt().toString()
         );
-        outboxService.recordEvent("Payment", payment.getId().toString(), RabbitMQConfig.ROUTING_KEY_PAYMENT_SUCCEEDED, outboxPayload);
+        outboxService.recordEvent("Payment", payment.getId().toString(),
+                RabbitMQConfig.ROUTING_KEY_PAYMENT_SUCCEEDED, outboxPayload);
 
-        // Send WebSocket status updates
-        notifyPaymentStatusChange(payment);
-    }
-
-    private void settleZeroFarePayment(Payment payment) {
-        payment.setStatus("PAID");
-        payment.setPaidAt(Instant.now());
-        paymentRepository.save(payment);
-        tripModuleApi.markPaymentStatus(payment.getTripId(), PaymentStatus.PAID);
         notifyPaymentStatusChange(payment);
     }
 
@@ -377,7 +437,9 @@ public class PaymentService {
 
         boolean isCustomer = payment.getCustomerId().equals(callerUserId);
         boolean isDriver = payment.getDriverUserId() != null && payment.getDriverUserId().equals(callerUserId);
-        boolean isAdmin = "ROLE_ADMIN".equalsIgnoreCase(role) || "ROLE_FINANCE".equalsIgnoreCase(role);
+        boolean isAdmin = "ROLE_ADMIN".equalsIgnoreCase(role)
+                || "ROLE_FINANCE".equalsIgnoreCase(role)
+                || "ROLE_OPERATOR".equalsIgnoreCase(role);
 
         if (!isCustomer && !isDriver && !isAdmin) {
             throw new PaymentBusinessException(HttpStatus.NOT_FOUND, "PAYMENT_NOT_FOUND", "Không tìm thấy thanh toán");
@@ -387,7 +449,7 @@ public class PaymentService {
     }
 
     public PaymentDto getPaymentByTripId(UUID customerId, UUID tripId) {
-        Payment payment = paymentRepository.findByTripId(tripId)
+        Payment payment = paymentRepository.findFirstByTripIdOrderByCreatedAtDesc(tripId)
                 .orElseThrow(() -> new PaymentBusinessException(HttpStatus.NOT_FOUND, "PAYMENT_NOT_FOUND", "Không tìm thấy thanh toán cho chuyến đi"));
 
         if (!payment.getCustomerId().equals(customerId)) {
@@ -397,6 +459,7 @@ public class PaymentService {
         return toDto(payment);
     }
 
+    @Transactional
     public List<PaymentMethodDto> getAvailableMethods(UUID customerId) {
         LedgerAccount wallet = ledgerService.getOrCreateUserWallet(customerId);
         long balance = wallet.getBalance().longValue();
@@ -435,21 +498,26 @@ public class PaymentService {
                 "method", payment.getMethod(),
                 "amountVnd", payment.getAmountVnd()
         );
+        messagingTemplate.convertAndSend("/topic/trip/" + payment.getTripId() + "/payment", ws);
         messagingTemplate.convertAndSendToUser(payment.getCustomerId().toString(), "/queue/payment-status", ws);
         if (payment.getDriverUserId() != null) {
             messagingTemplate.convertAndSendToUser(payment.getDriverUserId().toString(), "/queue/driver-payment", ws);
         }
     }
 
-    private void notifyDriverCashRequired(Payment payment) {
-        if (payment.getDriverUserId() == null) return;
+    private void notifyDriverCashRequired(Payment payment, UUID driverProfileId) {
         Map<String, Object> ws = Map.of(
                 "type", "CASH_REQUIRED",
                 "paymentId", payment.getId(),
                 "tripId", payment.getTripId(),
                 "amountVnd", payment.getAmountVnd()
         );
-        messagingTemplate.convertAndSendToUser(payment.getDriverUserId().toString(), "/queue/driver-payment", ws);
+        if (payment.getDriverUserId() != null) {
+            messagingTemplate.convertAndSendToUser(payment.getDriverUserId().toString(), "/queue/driver-payment", ws);
+        }
+        if (driverProfileId != null) {
+            messagingTemplate.convertAndSendToUser(driverProfileId.toString(), "/queue/driver-payment", ws);
+        }
     }
 
     public PaymentGateway selectGateway(String method) {
@@ -469,8 +537,8 @@ public class PaymentService {
     }
 
     private String generateGatewayTxnRef(UUID paymentId) {
-        String compactId = paymentId.toString().replace("-", "").substring(0, 12);
-        return System.currentTimeMillis() + compactId;
+        String shortId = paymentId.toString().replace("-", "").substring(0, 8).toUpperCase();
+        return "GM" + System.currentTimeMillis() + shortId;
     }
 
     public PaymentDto toDto(Payment p) {
@@ -480,8 +548,8 @@ public class PaymentService {
                 p.getMethod(),
                 p.getStatus(),
                 p.getAmountVnd(),
-                p.getCommissionVnd() != null ? p.getCommissionVnd() : 0,
-                p.getDriverAmountVnd() != null ? p.getDriverAmountVnd() : 0,
+                p.getCommissionVnd() != null ? p.getCommissionVnd() : 0L,
+                p.getDriverAmountVnd() != null ? p.getDriverAmountVnd() : 0L,
                 null,
                 null,
                 null,
@@ -491,4 +559,3 @@ public class PaymentService {
         );
     }
 }
-

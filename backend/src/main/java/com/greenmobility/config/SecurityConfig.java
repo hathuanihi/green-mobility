@@ -48,7 +48,7 @@ public class SecurityConfig {
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/swagger-resources/**", "/webjars/**").permitAll()
                 .requestMatchers("/admin/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_OPERATOR", "ROLE_FINANCE")
                 .requestMatchers("/driver/**").hasAuthority("ROLE_DRIVER")
-                .requestMatchers("/trips/**", "/payments/**", "/wallet/**").authenticated()
+                .requestMatchers("/trips/**", "/payments/**", "/wallet/**", "/incentive/**").authenticated()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

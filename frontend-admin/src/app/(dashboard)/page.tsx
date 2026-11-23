@@ -121,10 +121,10 @@ export default function AdminDashboardPage() {
               <CheckCircle2 className="w-4 h-4" /> Chuẩn Bộ TN&MT / IPCC
             </div>
             <p className="text-3xl font-extrabold text-white">
-              722.1 <span className="text-sm font-normal text-slate-400">gCO2/kWh</span>
+              618.70 <span className="text-sm font-normal text-slate-400">gCO2/kWh</span>
             </p>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Áp dụng cho toàn bộ tính toán phát thải gián tiếp của xe điện trong hệ thống điều hành.
+              Hệ số phát thải lưới điện Việt Nam năm 2024 theo Công văn 11232/BNNMT-BĐKH.
             </p>
           </div>
 

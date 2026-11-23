@@ -6,7 +6,7 @@ import com.greenmobility.modules.payment.dto.DriverEarningsDtos;
 import com.greenmobility.modules.payment.dto.WalletDtos;
 import com.greenmobility.modules.payment.dto.WithdrawalDtos;
 import com.greenmobility.modules.payment.service.DriverEarningsService;
-import com.greenmobility.modules.payment.service.IdempotencyService;
+import com.greenmobility.common.platform.service.IdempotencyService;
 import com.greenmobility.modules.payment.service.WithdrawalService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

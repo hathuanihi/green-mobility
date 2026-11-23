@@ -24,6 +24,8 @@ public class TripResponseDto {
     private BigDecimal fareAmountVnd;
     private BigDecimal discountAmountVnd;
     private BigDecimal finalAmountVnd;
+    private UUID voucherRedemptionId;
+    private String voucherCode;
     private PaymentMethod paymentMethod;
     private PaymentStatus paymentStatus;
     private Double estimatedDistanceKm;
@@ -264,6 +266,22 @@ public class TripResponseDto {
 
     public void setActualDurationS(Integer actualDurationS) {
         this.actualDurationS = actualDurationS;
+    }
+
+    public UUID getVoucherRedemptionId() {
+        return voucherRedemptionId;
+    }
+
+    public void setVoucherRedemptionId(UUID voucherRedemptionId) {
+        this.voucherRedemptionId = voucherRedemptionId;
+    }
+
+    public String getVoucherCode() {
+        return voucherCode;
+    }
+
+    public void setVoucherCode(String voucherCode) {
+        this.voucherCode = voucherCode;
     }
 }
 

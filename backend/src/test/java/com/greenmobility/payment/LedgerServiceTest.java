@@ -1,8 +1,13 @@
 package com.greenmobility.payment;
 
 import com.greenmobility.common.exception.PaymentBusinessException;
-import com.greenmobility.modules.payment.domain.*;
-import com.greenmobility.modules.payment.ledger.*;
+import com.greenmobility.modules.ledger.api.PostingEntry;
+import com.greenmobility.modules.ledger.api.PostingRequest;
+import com.greenmobility.modules.ledger.domain.*;
+import com.greenmobility.modules.ledger.repository.LedgerAccountRepository;
+import com.greenmobility.modules.ledger.repository.LedgerEntryRepository;
+import com.greenmobility.modules.ledger.repository.LedgerTransactionRepository;
+import com.greenmobility.modules.ledger.service.LedgerService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,6 +42,15 @@ class LedgerServiceTest {
     void testUnbalancedEntriesThrowException() {
         UUID acc1 = UUID.randomUUID();
         UUID acc2 = UUID.randomUUID();
+
+        LedgerAccount a1 = new LedgerAccount("WALLET:VND:" + acc1, UUID.randomUUID(), AccountType.USER_GREEN_WALLET, "VND", false);
+        a1.setId(acc1);
+        a1.setBalance(new BigDecimal("200000"));
+        LedgerAccount a2 = new LedgerAccount("SYS:REVENUE:VND", null, AccountType.PLATFORM_REVENUE, "VND", true);
+        a2.setId(acc2);
+        a2.setBalance(BigDecimal.ZERO);
+        when(accountRepository.findByIdWithLock(acc1)).thenReturn(Optional.of(a1));
+        when(accountRepository.findByIdWithLock(acc2)).thenReturn(Optional.of(a2));
 
         PostingRequest req = new PostingRequest(
                 "TX-1",

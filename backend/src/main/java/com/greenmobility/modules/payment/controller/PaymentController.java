@@ -5,7 +5,7 @@ import com.greenmobility.common.security.UserPrincipal;
 import com.greenmobility.modules.payment.dto.CheckoutResponse;
 import com.greenmobility.modules.payment.dto.PaymentDto;
 import com.greenmobility.modules.payment.dto.PaymentMethodDto;
-import com.greenmobility.modules.payment.service.IdempotencyService;
+import com.greenmobility.common.platform.service.IdempotencyService;
 import com.greenmobility.modules.payment.service.PaymentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

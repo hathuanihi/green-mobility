@@ -30,28 +30,16 @@ import {
 import Header from "@/components/layout/Header";
 import KpiCard from "@/components/ui/KpiCard";
 import apiClient from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { useToast } from "@/components/Toast";
 import { ApiResponse, FinanceOverviewData, ReconciliationData } from "@/types";
 
 const COLORS = ["#10B981", "#3B82F6", "#8B5CF6", "#F59E0B", "#EF4444"];
 
-const DEFAULT_REVENUE_BY_DAY = [
-  { date: "22/10", gmv: 38000000, revenue: 7600000, driverEarnings: 30400000 },
-  { date: "23/10", gmv: 41000000, revenue: 8200000, driverEarnings: 32800000 },
-  { date: "24/10", gmv: 39500000, revenue: 7900000, driverEarnings: 31600000 },
-  { date: "25/10", gmv: 44000000, revenue: 8800000, driverEarnings: 35200000 },
-  { date: "26/10", gmv: 48000000, revenue: 9600000, driverEarnings: 38400000 },
-  { date: "27/10", gmv: 52000000, revenue: 10400000, driverEarnings: 41600000 },
-  { date: "28/10", gmv: 45200000, revenue: 9040000, driverEarnings: 36160000 },
-];
-
-const DEFAULT_PAYMENT_BREAKDOWN = [
-  { method: "GREEN_WALLET", count: 420, amount: 25200000 },
-  { method: "VNPAY", count: 180, amount: 11000000 },
-  { method: "MOMO", count: 90, amount: 5500000 },
-  { method: "CASH", count: 50, amount: 3500000 },
-];
-
 export default function FinancePage() {
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const isReadOnly = user?.role === "ROLE_OPERATOR";
   const [loading, setLoading] = useState(true);
   const [reconciling, setReconciling] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
@@ -63,11 +51,11 @@ export default function FinancePage() {
   // Settings form state
   const [settings, setSettings] = useState({
     commissionRate: 0.2,
-    topupMinVnd: 50000,
+    topupMinVnd: 10000,
     topupMaxVnd: 10000000,
-    withdrawMinVnd: 100000,
+    withdrawMinVnd: 50000,
     withdrawMaxVnd: 20000000,
-    cashDebtLimitVnd: 500000,
+    cashDebtLimitVnd: 200000,
   });
 
   const fetchData = async () => {
@@ -79,43 +67,40 @@ export default function FinancePage() {
         apiClient.get<ApiResponse<Record<string, string>>>("/admin/settings/payment"),
       ]);
 
-      // 1. Overview Data
+      // 1. Overview Data (100% live from backend)
       if (
         overviewRes.status === "fulfilled" &&
         overviewRes.value.data?.success &&
         overviewRes.value.data?.data
       ) {
         const d = overviewRes.value.data.data;
-        const gmv = d.totalGmvVnd && d.totalGmvVnd > 0 ? d.totalGmvVnd : 45200000;
-        const rev = d.totalCommissionVnd && d.totalCommissionVnd > 0 ? d.totalCommissionVnd : Math.round(gmv * 0.2);
+        const gmv = Number(d.totalGmvVnd ?? 0);
+        const rev = Number(d.totalCommissionVnd ?? 0);
         const methodEntries = d.paymentsByMethod ? Object.entries(d.paymentsByMethod) : [];
-        const breakdown =
-          methodEntries.length > 0
-            ? methodEntries.map(([method, count]) => ({
-                method,
-                count: Number(count),
-                amount: Number(count) * 65000,
-              }))
-            : DEFAULT_PAYMENT_BREAKDOWN;
+        const methodAmounts = d.methodAmountsVnd || {};
+        const breakdown = methodEntries.map(([method, count]) => ({
+          method,
+          count: Number(count),
+          amount: Number(methodAmounts[method] ?? 0),
+        }));
+
+        const revenueByDay = Array.isArray(d.revenueByDay)
+          ? d.revenueByDay.map((pt: any) => ({
+              date: pt.date,
+              gmv: Number(pt.gmv ?? 0),
+              revenue: Number(pt.commission ?? 0),
+              driverEarnings: Number(pt.driverPayout ?? 0),
+            }))
+          : [];
 
         setFinanceData({
           todayGmv: gmv,
           todayPlatformRevenue: rev,
-          todayDriverEarnings: gmv - rev,
-          totalWalletBalance: 128500000,
-          activeDriversCount: 142,
-          revenueByDay: DEFAULT_REVENUE_BY_DAY,
+          todayDriverEarnings: Math.max(0, gmv - rev),
+          totalWalletBalance: Number(d.totalWalletBalanceVnd ?? 0),
+          activeDriversCount: Number(d.activeDriversCount ?? 0),
+          revenueByDay,
           paymentMethodBreakdown: breakdown,
-        });
-      } else {
-        setFinanceData({
-          todayGmv: 45200000,
-          todayPlatformRevenue: 9040000,
-          todayDriverEarnings: 36160000,
-          totalWalletBalance: 128500000,
-          activeDriversCount: 142,
-          revenueByDay: DEFAULT_REVENUE_BY_DAY,
-          paymentMethodBreakdown: DEFAULT_PAYMENT_BREAKDOWN,
         });
       }
 
@@ -135,9 +120,9 @@ export default function FinancePage() {
         setReconciliationData({
           lastRunAt: r.checkedAt || new Date().toISOString(),
           status: isBal ? "BALANCED" : "DISCREPANCY",
-          totalSystemDebit: 254800000,
-          totalSystemCredit: 254800000,
-          systemBalanceDifference: r.systemTotalVnd || 0,
+          totalSystemDebit: Number(r.systemTotalVnd ?? 0),
+          totalSystemCredit: 0,
+          systemBalanceDifference: Number(r.systemTotalVnd ?? 0),
           anomaliesCount: anomalies,
           checks: {
             zeroSumLedger: (r.unbalancedTransactionsCount || 0) === 0,
@@ -147,23 +132,6 @@ export default function FinancePage() {
             pendingWithdrawalsAudited: true,
           },
           discrepancies: r.discrepancies || [],
-        });
-      } else {
-        setReconciliationData({
-          lastRunAt: new Date().toISOString(),
-          status: "BALANCED",
-          totalSystemDebit: 254800000,
-          totalSystemCredit: 254800000,
-          systemBalanceDifference: 0,
-          anomaliesCount: 0,
-          checks: {
-            zeroSumLedger: true,
-            userBalanceNonNegative: true,
-            gatewayMatching: true,
-            cashDebtCompliant: true,
-            pendingWithdrawalsAudited: true,
-          },
-          discrepancies: [],
         });
       }
 
@@ -183,8 +151,8 @@ export default function FinancePage() {
           cashDebtLimitVnd: s.cash_debt_limit_vnd ? parseInt(s.cash_debt_limit_vnd, 10) : prev.cashDebtLimitVnd,
         }));
       }
-    } catch {
-      // Fallback handled above
+    } catch (err: any) {
+      showToast("Không thể tải dữ liệu tài chính: " + (err.response?.data?.message || err.message), "error");
     } finally {
       setLoading(false);
     }
@@ -209,9 +177,9 @@ export default function FinancePage() {
         setReconciliationData({
           lastRunAt: r.checkedAt || new Date().toISOString(),
           status: isBal ? "BALANCED" : "DISCREPANCY",
-          totalSystemDebit: 254800000,
-          totalSystemCredit: 254800000,
-          systemBalanceDifference: r.systemTotalVnd || 0,
+          totalSystemDebit: Number(r.systemTotalVnd ?? 0),
+          totalSystemCredit: 0,
+          systemBalanceDifference: Number(r.systemTotalVnd ?? 0),
           anomaliesCount: anomalies,
           checks: {
             zeroSumLedger: (r.unbalancedTransactionsCount || 0) === 0,
@@ -222,27 +190,10 @@ export default function FinancePage() {
           },
           discrepancies: r.discrepancies || [],
         });
+        showToast(isBal ? "Đối soát sổ cái VND cân bằng Δ = 0đ!" : "Phát hiện sai lệch sổ cái!", isBal ? "success" : "error");
       }
-    } catch {
-      setReconciliationData((prev) =>
-        prev
-          ? {
-              ...prev,
-              lastRunAt: new Date().toISOString(),
-              status: "BALANCED",
-              systemBalanceDifference: 0,
-              anomaliesCount: 0,
-              checks: {
-                zeroSumLedger: true,
-                userBalanceNonNegative: true,
-                gatewayMatching: true,
-                cashDebtCompliant: true,
-                pendingWithdrawalsAudited: true,
-              },
-              discrepancies: [],
-            }
-          : null
-      );
+    } catch (err: any) {
+      showToast("Lỗi chạy đối soát: " + (err.response?.data?.message || err.message), "error");
     } finally {
       setReconciling(false);
     }
@@ -250,6 +201,7 @@ export default function FinancePage() {
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isReadOnly) return;
     setSavingSettings(true);
     try {
       await apiClient.put("/admin/settings/payment", {
@@ -260,12 +212,13 @@ export default function FinancePage() {
         withdraw_max_vnd: settings.withdrawMaxVnd.toString(),
         cash_debt_limit_vnd: settings.cashDebtLimitVnd.toString(),
       });
-    } catch {
-      // Fallback for offline/demo mode
+      setSaveSuccess(true);
+      showToast("Đã cập nhật cấu hình tham số tài chính!", "success");
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err: any) {
+      showToast("Không thể lưu cấu hình: " + (err.response?.data?.message || err.message), "error");
     } finally {
       setSavingSettings(false);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
     }
   };
 
@@ -690,16 +643,18 @@ export default function FinancePage() {
             </div>
           </div>
 
-          <div className="flex justify-end pt-4 border-t border-slate-800">
-            <button
-              type="submit"
-              disabled={savingSettings}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition shadow-lg shadow-emerald-950 disabled:opacity-60"
-            >
-              <Save className="w-4 h-4" />
-              <span>{savingSettings ? "Đang lưu..." : "Lưu thay đổi cấu hình"}</span>
-            </button>
-          </div>
+          {!isReadOnly && (
+            <div className="flex justify-end pt-4 border-t border-slate-800">
+              <button
+                type="submit"
+                disabled={savingSettings}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition shadow-lg shadow-emerald-950 disabled:opacity-60"
+              >
+                <Save className="w-4 h-4" />
+                <span>{savingSettings ? "Đang lưu..." : "Lưu thay đổi cấu hình"}</span>
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>

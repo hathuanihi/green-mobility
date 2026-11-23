@@ -24,11 +24,6 @@ public class TripCompletedCarbonConsumer {
         log.info("[TripCompletedCarbonConsumer] Received TripCompletedEvent: tripId={}, code={}, actualDistance={}m",
                 event.getTripId(), event.getTripCode(), event.getActualDistanceM());
 
-        try {
-            carbonCalculationService.processTripCompletion(event);
-        } catch (Exception e) {
-            log.error("[TripCompletedCarbonConsumer] Error calculating carbon for trip {}: {}",
-                    event.getTripId(), e.getMessage(), e);
-        }
+        carbonCalculationService.processTripCompletion(event);
     }
 }

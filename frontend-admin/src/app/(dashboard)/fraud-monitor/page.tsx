@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import apiClient from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { useToast } from "@/components/Toast";
 import { FraudAlert, FraudStats, ApiResponse } from "@/types";
 import {
   ShieldAlert,
@@ -23,6 +25,9 @@ import {
 } from "lucide-react";
 
 export default function FraudMonitorPage() {
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const isReadOnly = user?.role === "ROLE_OPERATOR";
   const [alerts, setAlerts] = useState<FraudAlert[]>([]);
   const [stats, setStats] = useState<FraudStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -78,7 +83,25 @@ export default function FraudMonitorPage() {
       }
     } catch (err) {
       console.error("Lỗi cập nhật cảnh báo:", err);
-      alert("Không thể cập nhật trạng thái cảnh báo!");
+      showToast("Không thể cập nhật trạng thái cảnh báo!", "error");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleWalletFreeze = async (userId: string, freeze: boolean) => {
+    if (isReadOnly) return;
+    try {
+      setIsUpdating(true);
+      await apiClient.post(`/admin/ledger/users/${userId}/${freeze ? "freeze" : "unfreeze"}`, {
+        reason: freeze ? "Đóng băng ví Carbon do cảnh báo gian lận GPS/Pin" : "Mở khóa ví Carbon sau kiểm tra",
+      });
+      showToast(
+        freeze ? "Đã ĐÓNG BĂNG Ví Carbon & Điểm Xanh của tài khoản!" : "Đã MỞ KHÓA Ví Carbon!",
+        freeze ? "warning" : "success"
+      );
+    } catch (err: any) {
+      showToast("Lỗi thao tác ví Carbon: " + (err.response?.data?.message || err.message), "error");
     } finally {
       setIsUpdating(false);
     }
@@ -385,7 +408,7 @@ export default function FraudMonitorPage() {
                             Chi tiết
                           </button>
 
-                          {isPending && (
+                          {isPending && !isReadOnly && (
                             <button
                               onClick={() => handleResolveAlert(a.id, "RESOLVED")}
                               disabled={isUpdating}
@@ -461,21 +484,47 @@ export default function FraudMonitorPage() {
                 Đóng
               </button>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleResolveAlert(selectedAlert.id, "DISMISSED")}
-                  disabled={isUpdating}
-                  className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-xl transition"
-                >
-                  Bỏ qua
-                </button>
-                <button
-                  onClick={() => handleResolveAlert(selectedAlert.id, "RESOLVED")}
-                  disabled={isUpdating}
-                  className="px-4 py-2 text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition"
-                >
-                  Xác nhận xử lý cảnh báo
-                </button>
+              <div className="flex flex-wrap items-center gap-2">
+                {!isReadOnly && (selectedAlert.driverUserId || selectedAlert.customerId) && (
+                  <>
+                    <button
+                      onClick={() =>
+                        handleWalletFreeze((selectedAlert.driverUserId || selectedAlert.customerId)!, true)
+                      }
+                      disabled={isUpdating}
+                      className="px-3 py-2 text-xs font-semibold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-xl transition"
+                    >
+                      Đóng băng Ví Carbon
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleWalletFreeze((selectedAlert.driverUserId || selectedAlert.customerId)!, false)
+                      }
+                      disabled={isUpdating}
+                      className="px-3 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl transition"
+                    >
+                      Mở khóa Ví
+                    </button>
+                  </>
+                )}
+                {!isReadOnly && (
+                  <>
+                    <button
+                      onClick={() => handleResolveAlert(selectedAlert.id, "DISMISSED")}
+                      disabled={isUpdating}
+                      className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-xl transition"
+                    >
+                      Bỏ qua
+                    </button>
+                    <button
+                      onClick={() => handleResolveAlert(selectedAlert.id, "RESOLVED")}
+                      disabled={isUpdating}
+                      className="px-4 py-2 text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition"
+                    >
+                      Xác nhận xử lý cảnh báo
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>

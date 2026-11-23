@@ -37,6 +37,10 @@ class AuthRepository {
     return await tokenStorage.getToken();
   }
 
+  Future<UserProfile> getCurrentUser() async {
+    return await authApi.getCurrentUser();
+  }
+
   Future<void> logout() async {
     await authApi.logout();
   }

@@ -42,7 +42,7 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
-    validate-on-migrate: false
+    validate-on-migrate: true
 
   # Redis Configuration
   data:
@@ -61,11 +61,16 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:rabbit_admin}
     password: ${RABBITMQ_PASSWORD:rabbit_password_2026}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
     listener:
       simple:
         concurrency: 3
         max-concurrency: 10
         prefetch: 1
+        default-requeue-rejected: false
 
 # Security & JWT Properties
 security:
@@ -94,9 +99,9 @@ green-mobility:
     tier3-radius-km: 5.0
     driver-response-timeout-seconds: 15
   carbon:
-    default-grid-emission-factor-gco2-kwh: 722.1
+    default-grid-emission-factor-gco2-kwh: 618.7
     tree-absorption-daily-kg: 0.06
-    led-bulb-consumption-hourly-gco2: 7.221
+    led-bulb-consumption-hourly-gco2: 6.187
   tracking:
     geofence-arrived-radius-m: 50
     manual-arrive-max-distance-m: 200

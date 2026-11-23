@@ -7,70 +7,48 @@ class PaymentApi {
 
   PaymentApi({required this.apiClient});
 
-  /// Khởi tạo thanh toán cuốc xe (Ví Xanh, MoMo, VNPay, Tiền mặt)
+  Future<List<Map<String, dynamic>>> getAvailableMethods() async {
+    final response = await apiClient.dio.get('/payments/methods');
+    final data = response.data['data'] as List<dynamic>? ?? [];
+    return data.map((e) => e as Map<String, dynamic>).toList();
+  }
+
+  Future<PaymentResponseModel> getPaymentByTrip(String tripId) async {
+    final response = await apiClient.dio.get('/payments/trips/$tripId');
+    final data = response.data['data'] as Map<String, dynamic>;
+    return PaymentResponseModel.fromJson(data);
+  }
+
   Future<PaymentResponseModel> settlePayment(
     String tripId,
     PaymentMethod method, {
     String? returnUrl,
     String? idempotencyKey,
   }) async {
-    final payload = SettlePaymentRequest(
-      tripId: tripId,
-      method: method,
-      returnUrl: returnUrl,
-    );
-
-    final options = Options(
-      headers: {
-        if (idempotencyKey != null) 'Idempotency-Key': idempotencyKey,
-      },
-    );
-
+    final key = idempotencyKey ?? ApiClient.generateIdempotencyKey();
     final response = await apiClient.dio.post(
-      '/payments/settle',
-      data: payload.toJson(),
-      options: options,
+      '/payments/trips/$tripId/checkout',
+      data: {
+        'method': method.value,
+        if (returnUrl != null) 'returnUrl': returnUrl,
+      },
+      options: Options(headers: {'Idempotency-Key': key}),
     );
-
-    final resData = response.data;
-    if (resData is Map<String, dynamic> && resData['data'] != null) {
-      return PaymentResponseModel.fromJson(resData['data'] as Map<String, dynamic>);
-    }
-    throw Exception(resData?['message'] ?? 'Không thể khởi tạo thanh toán');
+    final data = response.data['data'] as Map<String, dynamic>;
+    return PaymentResponseModel.fromJson(data);
   }
 
-  /// Tra cứu trạng thái thanh toán của cuốc xe
   Future<PaymentResponseModel> getPaymentStatus(String paymentId) async {
     final response = await apiClient.dio.get('/payments/$paymentId');
-    final resData = response.data;
-    if (resData is Map<String, dynamic> && resData['data'] != null) {
-      return PaymentResponseModel.fromJson(resData['data'] as Map<String, dynamic>);
-    }
-    throw Exception('Không tìm thấy thông tin giao dịch thanh toán');
+    final data = response.data['data'] as Map<String, dynamic>;
+    return PaymentResponseModel.fromJson(data);
   }
 
-  /// Tra cứu giao dịch thanh toán theo tripId
-  Future<PaymentResponseModel?> getPaymentByTrip(String tripId) async {
-    try {
-      final response = await apiClient.dio.get('/payments/by-trip/$tripId');
-      final resData = response.data;
-      if (resData is Map<String, dynamic> && resData['data'] != null) {
-        return PaymentResponseModel.fromJson(resData['data'] as Map<String, dynamic>);
-      }
-      return null;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// Driver xác nhận đã thu tiền mặt của khách (Cash Collected)
-  Future<void> confirmCashCollected(String paymentId) async {
-    final response = await apiClient.dio.post('/payments/$paymentId/cash-confirm');
-    final resData = response.data;
-    if (resData is Map<String, dynamic> && resData['success'] == true) {
-      return;
-    }
-    throw Exception(resData?['message'] ?? 'Không thể xác nhận thu tiền mặt');
+  Future<void> confirmCashCollected(String tripId, {String? idempotencyKey}) async {
+    final key = idempotencyKey ?? ApiClient.generateIdempotencyKey();
+    await apiClient.dio.post(
+      '/driver/trips/$tripId/confirm-cash',
+      options: Options(headers: {'Idempotency-Key': key}),
+    );
   }
 }
-

@@ -25,9 +25,14 @@ import {
 import Header from "@/components/layout/Header";
 import KpiCard from "@/components/ui/KpiCard";
 import apiClient from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { useToast } from "@/components/Toast";
 import { ApiResponse, EmissionFactor, CarbonSimulationResult } from "@/types";
 
 export default function EmissionFactorsPage() {
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const isReadOnly = user?.role === "ROLE_OPERATOR";
   const [factors, setFactors] = useState<EmissionFactor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"MATRIX" | "SIMULATOR">("MATRIX");
@@ -44,9 +49,9 @@ export default function EmissionFactorsPage() {
   const [editingFactor, setEditingFactor] = useState<EmissionFactor | null>(null);
   const [modalFormData, setModalFormData] = useState({
     vehicleCategory: "ELECTRIC_MOTORBIKE",
-    baselineGasolineFactorGco2Km: 70.0,
-    evEnergyConsumptionKwhKm: 0.025,
-    gridEmissionFactorGco2Kwh: 580.0,
+    baselineGasolineFactorGco2Km: 68.5,
+    evEnergyConsumptionKwhKm: 0.032,
+    gridEmissionFactorGco2Kwh: 618.7,
     region: "VIETNAM_NATIONAL",
     effectiveFrom: new Date().toISOString().split("T")[0],
     isActive: true,
@@ -61,52 +66,8 @@ export default function EmissionFactorsPage() {
       if (res.data.success && res.data.data) {
         setFactors(res.data.data);
       }
-    } catch (err) {
-      console.warn("Lỗi tải danh sách hệ số phát thải, nạp fallback mặc định:", err);
-      // Fallback display if network issue
-      if (factors.length === 0) {
-        setFactors([
-          {
-            id: "b3a1aa69-7152-4824-9d69-045b2f06c3c4",
-            vehicleCategory: "ELECTRIC_MOTORBIKE",
-            baselineGasolineFactorGco2Km: 70.0,
-            evEnergyConsumptionKwhKm: 0.025,
-            gridEmissionFactorGco2Kwh: 580.0,
-            calculatedEvFactorGco2Km: 14.5,
-            netCo2SavingPerKm: 55.5,
-            region: "VIETNAM_NATIONAL",
-            effectiveFrom: "2026-01-01",
-            isActive: true,
-            createdAt: new Date().toISOString(),
-          },
-          {
-            id: "1b6b1b8b-29d6-443a-932e-d485850b7b03",
-            vehicleCategory: "ELECTRIC_CAR_4SEAT",
-            baselineGasolineFactorGco2Km: 140.0,
-            evEnergyConsumptionKwhKm: 0.14,
-            gridEmissionFactorGco2Kwh: 580.0,
-            calculatedEvFactorGco2Km: 81.2,
-            netCo2SavingPerKm: 58.8,
-            region: "VIETNAM_NATIONAL",
-            effectiveFrom: "2026-01-01",
-            isActive: true,
-            createdAt: new Date().toISOString(),
-          },
-          {
-            id: "76c549a0-358d-46fa-8373-b16f3574ae36",
-            vehicleCategory: "ELECTRIC_CAR_7SEAT",
-            baselineGasolineFactorGco2Km: 180.0,
-            evEnergyConsumptionKwhKm: 0.18,
-            gridEmissionFactorGco2Kwh: 580.0,
-            calculatedEvFactorGco2Km: 104.4,
-            netCo2SavingPerKm: 75.6,
-            region: "VIETNAM_NATIONAL",
-            effectiveFrom: "2026-01-01",
-            isActive: true,
-            createdAt: new Date().toISOString(),
-          },
-        ]);
-      }
+    } catch (err: any) {
+      showToast("Không thể tải ma trận hệ số phát thải: " + (err.response?.data?.message || err.message), "error");
     } finally {
       setIsLoading(false);
     }
@@ -122,14 +83,12 @@ export default function EmissionFactorsPage() {
       if (res.data.success && res.data.data) {
         setSimResult(res.data.data);
       }
-    } catch (err) {
-      console.warn("Lỗi chạy sandbox simulate, tự tính toán fallback:", err);
-      // Local client fallback calculation
-      const baseline = category === "ELECTRIC_MOTORBIKE" ? 70.0 : category === "ELECTRIC_CAR_4SEAT" ? 140.0 : 180.0;
-      const sec = category === "ELECTRIC_MOTORBIKE" ? 0.025 : category === "ELECTRIC_CAR_4SEAT" ? 0.14 : 0.18;
-      const grid = 580.0;
-      const evFactor = sec * grid;
-      const netPerKm = baseline - evFactor;
+    } catch {
+      const baseline = category === "ELECTRIC_MOTORBIKE" ? 68.5 : category === "ELECTRIC_CAR_4SEAT" ? 152.0 : 210.0;
+      const sec = category === "ELECTRIC_MOTORBIKE" ? 0.032 : category === "ELECTRIC_CAR_4SEAT" ? 0.135 : 0.18;
+      const grid = 618.7;
+      const evFactor = Number((sec * grid).toFixed(2));
+      const netPerKm = Number((baseline - evFactor).toFixed(2));
       const netSaved = netPerKm * km;
 
       setSimResult({
@@ -145,9 +104,9 @@ export default function EmissionFactorsPage() {
         netCo2SavedGrams: netSaved,
         netCo2SavedKg: netSaved / 1000,
         treeAbsorptionDaysEquiv: netSaved / 60.0,
-        ledBulbHoursEquiv: netSaved / 7.221,
+        ledBulbHoursEquiv: netSaved / 6.187,
         smartphoneChargesEquiv: netSaved / 8.22,
-        carbonCreditsEarned: netSaved / 1000000.0,
+        carbonCreditsEarned: netSaved / 1000.0,
         ecoPoints: Math.floor(netSaved / 100.0),
       });
     } finally {
@@ -161,12 +120,13 @@ export default function EmissionFactorsPage() {
   }, []);
 
   const handleOpenAddModal = () => {
+    if (isReadOnly) return;
     setEditingFactor(null);
     setModalFormData({
       vehicleCategory: "ELECTRIC_MOTORBIKE",
-      baselineGasolineFactorGco2Km: 70.0,
-      evEnergyConsumptionKwhKm: 0.025,
-      gridEmissionFactorGco2Kwh: 580.0,
+      baselineGasolineFactorGco2Km: 68.5,
+      evEnergyConsumptionKwhKm: 0.032,
+      gridEmissionFactorGco2Kwh: 618.7,
       region: "VIETNAM_NATIONAL",
       effectiveFrom: new Date().toISOString().split("T")[0],
       isActive: true,
@@ -291,35 +251,35 @@ export default function EmissionFactorsPage() {
           </div>
         </div>
 
-        {/* 4 Core Carbon KPIs */}
+        {/* 4 Core Carbon KPIs (Derived live from active EmissionFactors) */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
             title="Chuẩn Đo lường"
-            value="IPCC 2006 / MoNRE"
-            subtitle="Hệ số lưới điện Việt Nam"
+            value="IPCC 2006 / BNNMT"
+            subtitle="CV 11232/BNNMT-BĐKH (2024)"
             icon={Leaf}
             iconColor="text-emerald-400"
             iconBgColor="bg-emerald-500/10"
           />
           <KpiCard
             title="Lưới điện Quốc gia (EF_grid)"
-            value="580.0 g/kWh"
-            subtitle="Hệ số phát thải lưới cập nhật 2026"
+            value={`${(factors.find((f) => f.isActive)?.gridEmissionFactorGco2Kwh ?? 618.7).toFixed(2)} g/kWh`}
+            subtitle="Công văn 11232/BNNMT-BĐKH"
             icon={Zap}
             iconColor="text-amber-400"
             iconBgColor="bg-amber-500/10"
           />
           <KpiCard
             title="Cắt giảm Xe máy Điện"
-            value="+55.50 g/km"
-            subtitle="Tiết kiệm 79.3% so với xe xăng"
+            value={`+${(factors.find((f) => f.isActive && f.vehicleCategory === "ELECTRIC_MOTORBIKE")?.netCo2SavingPerKm ?? 48.7).toFixed(2)} g/km`}
+            subtitle="Net = Baseline - SEC × EF_grid"
             icon={TrendingDown}
             iconColor="text-teal-400"
             iconBgColor="bg-teal-500/10"
           />
           <KpiCard
             title="Cắt giảm Ô tô Điện (4 & 7 chỗ)"
-            value="58.8 - 75.6 g/km"
+            value={`${(factors.find((f) => f.isActive && f.vehicleCategory === "ELECTRIC_CAR_4SEAT")?.netCo2SavingPerKm ?? 68.48).toFixed(2)} - ${(factors.find((f) => f.isActive && f.vehicleCategory === "ELECTRIC_CAR_7SEAT")?.netCo2SavingPerKm ?? 98.63).toFixed(2)} g/km`}
             subtitle="Giảm phát thải trực tiếp nội đô"
             icon={Sparkles}
             iconColor="text-cyan-400"

@@ -1,23 +1,23 @@
 package com.greenmobility.modules.payment.service;
 
 import com.greenmobility.common.exception.PaymentBusinessException;
-import com.greenmobility.modules.payment.domain.AccountType;
-import com.greenmobility.modules.payment.domain.LedgerAccount;
+import com.greenmobility.common.platform.service.PlatformSettingsService;
+import com.greenmobility.modules.ledger.domain.AccountType;
+import com.greenmobility.modules.ledger.domain.LedgerAccount;
+import com.greenmobility.modules.ledger.repository.LedgerAccountRepository;
 import com.greenmobility.modules.payment.domain.Payment;
 import com.greenmobility.modules.payment.dto.DriverEarningsDtos;
 import com.greenmobility.modules.payment.dto.WalletDtos;
-import com.greenmobility.modules.payment.ledger.LedgerAccountRepository;
 import com.greenmobility.modules.payment.repository.PaymentRepository;
 import com.greenmobility.modules.trip.api.TripModuleApi;
 import com.greenmobility.modules.trip.api.TripSnapshotDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -59,20 +59,12 @@ public class DriverEarningsService {
             startTime = now.toLocalDate().atStartOfDay(GMT7_ZONE);
         } else if ("MONTH".equalsIgnoreCase(range)) {
             startTime = now.toLocalDate().withDayOfMonth(1).atStartOfDay(GMT7_ZONE);
-        } else { // Default: WEEK (last 7 days)
+        } else {
             startTime = now.minusDays(6).toLocalDate().atStartOfDay(GMT7_ZONE);
         }
 
-        Instant fromInstant = startTime.toInstant();
-        Instant toInstant = now.toInstant();
-
-        // In production/sandbox, we aggregate from payments where driver_user_id = driverUserId and status = PAID
-        // For simplicity and efficiency, query payments in window
-        List<Payment> paidPayments = paymentRepository.findAll().stream()
-                .filter(p -> driverUserId.equals(p.getDriverUserId()))
-                .filter(p -> "PAID".equals(p.getStatus()))
-                .filter(p -> p.getPaidAt() != null && !p.getPaidAt().isBefore(fromInstant) && !p.getPaidAt().isAfter(toInstant))
-                .toList();
+        List<Payment> paidPayments = paymentRepository.findDriverPaidPaymentsInWindow(
+                driverUserId, startTime.toInstant(), now.toInstant());
 
         long grossFare = 0;
         long commission = 0;
@@ -81,8 +73,6 @@ public class DriverEarningsService {
         long onlineCollected = 0;
 
         Map<String, DailyAccumulator> dailyMap = new LinkedHashMap<>();
-
-        // Initialize series days
         LocalDate curDate = startTime.toLocalDate();
         LocalDate endDate = now.toLocalDate();
         while (!curDate.isAfter(endDate)) {
@@ -91,18 +81,18 @@ public class DriverEarningsService {
         }
 
         for (Payment p : paidPayments) {
-            long fare = p.getAmountVnd();
+            long gross = p.getGrossFareVnd() != null ? p.getGrossFareVnd() : p.getAmountVnd();
             long comm = p.getCommissionVnd() != null ? p.getCommissionVnd() : 0L;
-            long net = p.getDriverAmountVnd() != null ? p.getDriverAmountVnd() : (fare - comm);
+            long net = p.getDriverAmountVnd() != null ? p.getDriverAmountVnd() : (gross - comm);
 
-            grossFare += fare;
+            grossFare += gross;
             commission += comm;
             netEarnings += net;
 
             if ("CASH".equalsIgnoreCase(p.getMethod())) {
-                cashCollected += fare;
+                cashCollected += p.getAmountVnd();
             } else {
-                onlineCollected += fare;
+                onlineCollected += p.getAmountVnd();
             }
 
             if (p.getPaidAt() != null) {
@@ -138,28 +128,47 @@ public class DriverEarningsService {
     public WalletDtos.CursorPaginationResponse<DriverEarningsDtos.DriverTripEarningResponse> getTrips(
             UUID driverUserId, int limit, String cursor) {
         int pageSize = Math.min(Math.max(limit, 1), 50);
+        Instant cursorTime = null;
+        UUID cursorId = null;
+        if (cursor != null && !cursor.isBlank()) {
+            try {
+                String decoded = new String(Base64.getDecoder().decode(cursor), StandardCharsets.UTF_8);
+                String[] parts = decoded.split("\\|");
+                cursorTime = Instant.parse(parts[0]);
+                if (parts.length > 1) cursorId = UUID.fromString(parts[1]);
+            } catch (Exception ignored) {}
+        }
 
-        List<Payment> allPaid = paymentRepository.findAll().stream()
-                .filter(p -> driverUserId.equals(p.getDriverUserId()))
-                .filter(p -> "PAID".equals(p.getStatus()))
-                .sorted(Comparator.comparing(Payment::getPaidAt, Comparator.nullsLast(Comparator.reverseOrder())))
-                .toList();
+        List<Payment> rows = paymentRepository.findDriverPaidPaymentsCursor(
+                driverUserId, cursorTime, cursorId, pageSize + 1);
+        boolean hasMore = rows.size() > pageSize;
+        List<Payment> pageItems = hasMore ? rows.subList(0, pageSize) : rows;
 
         List<DriverEarningsDtos.DriverTripEarningResponse> dtoList = new ArrayList<>();
-        for (Payment p : allPaid) {
+        for (Payment p : pageItems) {
             String tripCode = tripModuleApi.getTrip(p.getTripId()).map(TripSnapshotDto::tripCode).orElse("N/A");
+            long gross = p.getGrossFareVnd() != null ? p.getGrossFareVnd() : p.getAmountVnd();
             dtoList.add(new DriverEarningsDtos.DriverTripEarningResponse(
                     p.getTripId(),
                     tripCode,
-                    p.getAmountVnd(),
-                    p.getCommissionVnd() != null ? p.getCommissionVnd() : 0,
-                    p.getDriverAmountVnd() != null ? p.getDriverAmountVnd() : 0,
+                    gross,
+                    p.getCommissionVnd() != null ? p.getCommissionVnd() : 0L,
+                    p.getDriverAmountVnd() != null ? p.getDriverAmountVnd() : 0L,
                     p.getMethod(),
                     p.getPaidAt()
             ));
         }
 
-        return new WalletDtos.CursorPaginationResponse<>(dtoList, null, false);
+        String nextCursor = null;
+        if (hasMore && !pageItems.isEmpty()) {
+            Payment last = pageItems.get(pageItems.size() - 1);
+            if (last.getPaidAt() != null) {
+                String raw = last.getPaidAt().toString() + "|" + last.getId().toString();
+                nextCursor = Base64.getEncoder().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
+            }
+        }
+
+        return new WalletDtos.CursorPaginationResponse<>(dtoList, nextCursor, hasMore);
     }
 
     @Transactional(readOnly = true)
@@ -198,11 +207,11 @@ public class DriverEarningsService {
         }
 
         if (!"PENDING".equals(payment.getStatus())) {
-            throw new PaymentBusinessException(HttpStatus.BAD_REQUEST, "PAYMENT_INVALID_STATUS", "Giao dịch không ở trạng thái chờ thu tiền mặt");
+            throw new PaymentBusinessException(HttpStatus.CONFLICT, "PAYMENT_INVALID_STATE",
+                    "Trạng thái thanh toán không hợp lệ để xác nhận tiền mặt: " + payment.getStatus());
         }
 
-        paymentService.settle(payment.getId(), "CASH_COLLECTED_CONFIRMED", null);
-        log.info("Driver {} confirmed cash collection for trip {}", driverUserId, tripId);
+        paymentService.settle(payment.getId(), "DRIVER_CASH_CONFIRMED", null);
     }
 
     private static class DailyAccumulator {
@@ -210,4 +219,3 @@ public class DriverEarningsService {
         int trips = 0;
     }
 }
-

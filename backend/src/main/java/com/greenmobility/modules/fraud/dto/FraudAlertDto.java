@@ -10,6 +10,8 @@ public class FraudAlertDto {
     private UUID id;
     private UUID tripId;
     private UUID driverId;
+    private UUID driverUserId;
+    private UUID customerId;
     private String driverName;
     private String driverPhone;
     private String vehiclePlate;
@@ -24,10 +26,16 @@ public class FraudAlertDto {
     public FraudAlertDto() {}
 
     public static FraudAlertDto fromEntity(FraudAlert entity, String driverName, String driverPhone, String vehiclePlate) {
+        return fromEntity(entity, null, driverName, driverPhone, vehiclePlate);
+    }
+
+    public static FraudAlertDto fromEntity(FraudAlert entity, UUID driverUserId, String driverName, String driverPhone, String vehiclePlate) {
         FraudAlertDto dto = new FraudAlertDto();
         dto.setId(entity.getId());
         dto.setTripId(entity.getTripId());
         dto.setDriverId(entity.getDriverId());
+        dto.setDriverUserId(driverUserId);
+        dto.setCustomerId(entity.getCustomerId());
         dto.setDriverName(driverName != null ? driverName : "Hệ thống");
         dto.setDriverPhone(driverPhone != null ? driverPhone : "-");
         dto.setVehiclePlate(vehiclePlate != null ? vehiclePlate : "-");
@@ -49,6 +57,12 @@ public class FraudAlertDto {
 
     public UUID getDriverId() { return driverId; }
     public void setDriverId(UUID driverId) { this.driverId = driverId; }
+
+    public UUID getDriverUserId() { return driverUserId; }
+    public void setDriverUserId(UUID driverUserId) { this.driverUserId = driverUserId; }
+
+    public UUID getCustomerId() { return customerId; }
+    public void setCustomerId(UUID customerId) { this.customerId = customerId; }
 
     public String getDriverName() { return driverName; }
     public void setDriverName(String driverName) { this.driverName = driverName; }

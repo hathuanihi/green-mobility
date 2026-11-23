@@ -66,8 +66,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (response.data.success && response.data.data) {
       const data = response.data.data;
 
-      // Kiểm tra quyền truy cập Admin hoặc Operator
-      if (data.role !== "ROLE_ADMIN" && data.role !== "ROLE_OPERATOR") {
+      // Kiểm tra quyền truy cập Admin, Finance hoặc Operator
+      if (
+        data.role !== "ROLE_ADMIN" &&
+        data.role !== "ROLE_FINANCE" &&
+        data.role !== "ROLE_OPERATOR"
+      ) {
         throw new Error("Tài khoản không có quyền truy cập Cổng Quản trị viên (Admin Portal)!");
       }
 

@@ -8,7 +8,7 @@ import 'presentation/bloc/auth/auth_cubit.dart';
 import 'presentation/bloc/auth/auth_state.dart';
 import 'presentation/bloc/driver/driver_cubit.dart';
 import 'presentation/screens/auth/login_screen.dart';
-import 'presentation/screens/home/driver_home_screen.dart';
+import 'presentation/screens/home/driver_shell_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,7 +60,7 @@ class GreenMobilityDriverApp extends StatelessWidget {
       home: BlocBuilder<AuthCubit, AuthState>(
         builder: (context, state) {
           if (state is Authenticated) {
-            return const DriverHomeScreen();
+            return const DriverShellScreen();
           }
           if (state is AuthInitial || state is AuthLoading) {
             return const Scaffold(

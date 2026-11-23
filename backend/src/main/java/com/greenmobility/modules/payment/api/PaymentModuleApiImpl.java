@@ -1,16 +1,14 @@
 package com.greenmobility.modules.payment.api;
 
-import com.greenmobility.modules.payment.domain.AccountType;
-import com.greenmobility.modules.payment.domain.LedgerAccount;
-import com.greenmobility.modules.payment.domain.Payment;
-import com.greenmobility.modules.payment.ledger.LedgerAccountRepository;
+import com.greenmobility.common.platform.service.PlatformSettingsService;
+import com.greenmobility.modules.ledger.domain.AccountType;
+import com.greenmobility.modules.ledger.domain.LedgerAccount;
+import com.greenmobility.modules.ledger.repository.LedgerAccountRepository;
 import com.greenmobility.modules.payment.repository.PaymentRepository;
-import com.greenmobility.modules.payment.service.PlatformSettingsService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -38,18 +36,8 @@ public class PaymentModuleApiImpl implements PaymentModuleApi {
     @Override
     @Transactional(readOnly = true)
     public Optional<UUID> getOutstandingTripId(UUID customerId) {
-        Instant cutoff = Instant.now().minusSeconds(15 * 60L); // 15 mins
-        List<Payment> payments = paymentRepository.findAll().stream()
-                .filter(p -> customerId.equals(p.getCustomerId()))
-                .filter(p -> List.of("FAILED", "PENDING", "INITIATED").contains(p.getStatus()))
-                .filter(p -> !"CASH".equalsIgnoreCase(p.getMethod()) || "FAILED".equalsIgnoreCase(p.getStatus()))
-                .filter(p -> p.getCreatedAt().isBefore(cutoff))
-                .toList();
-
-        if (!payments.isEmpty()) {
-            return Optional.of(payments.get(0).getTripId());
-        }
-        return Optional.empty();
+        Instant cutoff = Instant.now().minusSeconds(15 * 60L);
+        return paymentRepository.findFirstOutstandingTripId(customerId, cutoff);
     }
 
     @Override
@@ -76,4 +64,3 @@ public class PaymentModuleApiImpl implements PaymentModuleApi {
         return settingsService.getCashDebtLimitVnd();
     }
 }
-

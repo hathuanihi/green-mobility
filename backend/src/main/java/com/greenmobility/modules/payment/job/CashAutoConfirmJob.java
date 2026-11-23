@@ -3,7 +3,7 @@ package com.greenmobility.modules.payment.job;
 import com.greenmobility.modules.payment.domain.Payment;
 import com.greenmobility.modules.payment.repository.PaymentRepository;
 import com.greenmobility.modules.payment.service.PaymentService;
-import com.greenmobility.modules.payment.service.PlatformSettingsService;
+import com.greenmobility.common.platform.service.PlatformSettingsService;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

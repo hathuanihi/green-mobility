@@ -12,6 +12,10 @@ public class TripEstimateResponse {
     private Integer durationSeconds;
     private Integer durationMinutes;
     private BigDecimal fareAmountVnd;
+    private BigDecimal discountAmountVnd;
+    private BigDecimal finalAmountVnd;
+    private String voucherCode;
+    private String voucherTitle;
     private CarbonEstimateDto carbonEstimate;
     private String routePolyline;
 
@@ -92,5 +96,37 @@ public class TripEstimateResponse {
 
     public void setRoutePolyline(String routePolyline) {
         this.routePolyline = routePolyline;
+    }
+
+    public BigDecimal getDiscountAmountVnd() {
+        return discountAmountVnd;
+    }
+
+    public void setDiscountAmountVnd(BigDecimal discountAmountVnd) {
+        this.discountAmountVnd = discountAmountVnd;
+    }
+
+    public BigDecimal getFinalAmountVnd() {
+        return finalAmountVnd;
+    }
+
+    public void setFinalAmountVnd(BigDecimal finalAmountVnd) {
+        this.finalAmountVnd = finalAmountVnd;
+    }
+
+    public String getVoucherCode() {
+        return voucherCode;
+    }
+
+    public void setVoucherCode(String voucherCode) {
+        this.voucherCode = voucherCode;
+    }
+
+    public String getVoucherTitle() {
+        return voucherTitle;
+    }
+
+    public void setVoucherTitle(String voucherTitle) {
+        this.voucherTitle = voucherTitle;
     }
 }

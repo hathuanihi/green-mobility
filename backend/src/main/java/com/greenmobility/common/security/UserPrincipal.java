@@ -14,21 +14,29 @@ public class UserPrincipal implements UserDetails {
     private final UUID id;
     private final String phoneNumber;
     private final String password;
+    private final boolean enabled;
     private final Collection<? extends GrantedAuthority> authorities;
 
     public UserPrincipal(UUID id, String phoneNumber, String password, Collection<? extends GrantedAuthority> authorities) {
+        this(id, phoneNumber, password, true, authorities);
+    }
+
+    public UserPrincipal(UUID id, String phoneNumber, String password, boolean enabled, Collection<? extends GrantedAuthority> authorities) {
         this.id = id;
         this.phoneNumber = phoneNumber;
         this.password = password;
+        this.enabled = enabled;
         this.authorities = authorities;
     }
 
     public static UserPrincipal create(User user) {
         List<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(user.getRole().name()));
+        boolean isActive = user.getStatus() == com.greenmobility.modules.identity.entity.UserStatus.ACTIVE;
         return new UserPrincipal(
                 user.getId(),
                 user.getPhoneNumber(),
                 user.getPasswordHash(),
+                isActive,
                 authorities
         );
     }
@@ -62,5 +70,5 @@ public class UserPrincipal implements UserDetails {
     public boolean isCredentialsNonExpired() { return true; }
 
     @Override
-    public boolean isEnabled() { return true; }
+    public boolean isEnabled() { return enabled; }
 }

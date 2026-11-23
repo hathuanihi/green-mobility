@@ -1,5 +1,6 @@
 package com.greenmobility.modules.drivervehicle.controller;
 
+import com.greenmobility.common.exception.ResourceNotFoundException;
 import com.greenmobility.common.response.ApiResponse;
 import com.greenmobility.modules.drivervehicle.dto.AdminVehicleDto;
 import com.greenmobility.modules.drivervehicle.entity.DriverProfile;
@@ -75,7 +76,7 @@ public class AdminVehicleController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<AdminVehicleDto>> getVehicleById(@PathVariable UUID id) {
         Vehicle v = vehicleRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phương tiện với ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phương tiện với ID: " + id));
 
         String driverName = "Chưa gán";
         String driverPhone = "";
@@ -95,11 +96,12 @@ public class AdminVehicleController {
 
     @Operation(summary = "Xác minh / Duyệt phương tiện xe điện")
     @PatchMapping("/{id}/verify")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<ApiResponse<AdminVehicleDto>> verifyVehicle(
             @PathVariable UUID id,
             @RequestParam boolean verified) {
         Vehicle v = vehicleRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phương tiện với ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phương tiện với ID: " + id));
         v.setIsVerified(verified);
         Vehicle saved = vehicleRepository.save(v);
         return ResponseEntity.ok(ApiResponse.ok("Đã cập nhật trạng thái xác minh xe thành công", AdminVehicleDto.fromEntity(saved, null, null)));

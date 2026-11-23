@@ -1,4 +1,9 @@
-export type UserRole = "ROLE_ADMIN" | "ROLE_OPERATOR" | "ROLE_DRIVER" | "ROLE_CUSTOMER";
+export type UserRole =
+  | "ROLE_ADMIN"
+  | "ROLE_FINANCE"
+  | "ROLE_OPERATOR"
+  | "ROLE_DRIVER"
+  | "ROLE_CUSTOMER";
 
 export interface User {
   id: string;
@@ -254,6 +259,8 @@ export interface FraudAlert {
   id: string;
   tripId?: string;
   driverId?: string;
+  driverUserId?: string;
+  customerId?: string;
   driverName?: string;
   driverPhone?: string;
   vehiclePlate?: string;
@@ -376,6 +383,100 @@ export interface ReconciliationData {
   checkedAt?: string;
 }
 
+export interface RewardCatalogItem {
+  id: string;
+  title: string;
+  description?: string;
+  partnerName: string;
+  category: "VOUCHER_RIDE" | "TREE_PLANTING" | "ECO_PRODUCT" | string;
+  carbonCreditCost: number;
+  loyaltyPointCost: number;
+  imageUrl?: string;
+  quantityAvailable: number;
+  isActive: boolean;
+  discountType?: "FIXED_VND" | "PERCENT" | null;
+  discountValue?: number | null;
+  maxDiscountVnd?: number | null;
+  minFareVnd: number;
+  validityDays: number;
+  maxRedemptionsPerUser: number;
+  createdAt: string;
+}
 
+export interface TripAwardItem {
+  id: string;
+  tripId: string;
+  customerId: string;
+  driverUserId?: string;
+  co2SavedGrams: number;
+  totalPcc: number;
+  customerPcc: number;
+  driverPcc: number;
+  customerPoints: number;
+  driverPoints: number;
+  carbonReady: boolean;
+  paymentReady: boolean;
+  status: string;
+  holdReason?: string;
+  pccLedgerTxId?: string;
+  pointsLedgerTxId?: string;
+  creditedAt?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  reviewNote?: string;
+  createdAt: string;
+}
 
+export interface MultiCurrencyAuditReport {
+  isBalanced?: boolean;
+  balanced?: boolean;
+  totalsByCurrency?: Record<string, number>;
+  systemTotalsByCurrency?: Record<string, number>;
+  unbalancedTransactionsCount: number;
+  crossCurrencyTransactionsCount: number;
+  accountDiscrepanciesCount?: number;
+  accountDriftsCount?: number;
+  discrepancies: string[];
+  redemptionsFrozen: boolean;
+  checkedAt: string;
+}
 
+export interface LedgerTransactionItem {
+  id: string;
+  transactionCode: string;
+  tripId?: string;
+  transactionType: string;
+  currency: string;
+  totalAmount?: number;
+  totalDebit?: number;
+  description?: string;
+  referenceType?: string;
+  referenceId?: string;
+  reversalOf?: string;
+  alreadyReversed: boolean;
+  createdAt: string;
+}
+
+export interface LedgerEntryViewItem {
+  id: string;
+  accountId: string;
+  accountNumber: string;
+  accountType: string;
+  currency: string;
+  entryType: "DEBIT" | "CREDIT";
+  amount: number;
+  balanceAfter: number;
+  createdAt: string;
+}
+
+export interface OutboxFailedItem {
+  id: string;
+  aggregateType: string;
+  aggregateId: string;
+  routingKey: string;
+  status: string;
+  attempts?: number;
+  retryCount?: number;
+  lastError?: string;
+  createdAt: string;
+}

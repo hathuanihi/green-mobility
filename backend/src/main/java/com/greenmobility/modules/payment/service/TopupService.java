@@ -1,15 +1,18 @@
 package com.greenmobility.modules.payment.service;
 
 import com.greenmobility.common.exception.PaymentBusinessException;
+import com.greenmobility.common.platform.service.OutboxService;
+import com.greenmobility.common.platform.service.PlatformSettingsService;
 import com.greenmobility.config.RabbitMQConfig;
-import com.greenmobility.modules.payment.domain.*;
+import com.greenmobility.modules.ledger.api.PostingEntry;
+import com.greenmobility.modules.ledger.api.PostingRequest;
+import com.greenmobility.modules.ledger.domain.*;
+import com.greenmobility.modules.ledger.service.LedgerService;
+import com.greenmobility.modules.payment.domain.TopupRequest;
 import com.greenmobility.modules.payment.dto.TopupDtos;
 import com.greenmobility.modules.payment.gateway.CheckoutRequest;
 import com.greenmobility.modules.payment.gateway.CheckoutResult;
 import com.greenmobility.modules.payment.gateway.PaymentGateway;
-import com.greenmobility.modules.payment.ledger.LedgerService;
-import com.greenmobility.modules.payment.ledger.PostingEntry;
-import com.greenmobility.modules.payment.ledger.PostingRequest;
 import com.greenmobility.modules.payment.repository.TopupRequestRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,7 +71,7 @@ public class TopupService {
 
         String normalizedGateway = gatewayName != null ? gatewayName.toUpperCase() : "VNPAY";
         String txnRef = "TOPUP" + System.currentTimeMillis() + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-        Instant expiresAt = Instant.now().plusSeconds(900); // 15 mins
+        Instant expiresAt = Instant.now().plusSeconds(900);
 
         TopupRequest topup = new TopupRequest();
         topup.setUserId(userId);
@@ -115,42 +118,31 @@ public class TopupService {
 
         LedgerAccount userWallet = ledgerService.getOrCreateUserWallet(topup.getUserId());
         LedgerAccount gatewayClearing = ledgerService.getSystemAccount(AccountType.GATEWAY_CLEARING);
-
         BigDecimal amount = BigDecimal.valueOf(topup.getAmountVnd());
 
-        // Posting template TOPUP: Dr GATEWAY_CLEARING / Cr USER_GREEN_WALLET
-        PostingRequest postingRequest = new PostingRequest(
-                null,
-                null,
-                LedgerTxType.TOPUP,
+        LedgerTransaction tx = ledgerService.post(new PostingRequest(
+                null, null, LedgerTxType.TOPUP,
                 "Nap tien Vi Xanh qua cong " + topup.getGateway(),
-                "TOPUP-TX-" + topup.getId(),
-                "TOPUP",
-                topup.getId(),
-                null,
+                "TOPUP-TX-" + topup.getId(), "TOPUP", topup.getId(), null,
                 List.of(
                         new PostingEntry(gatewayClearing.getId(), EntryType.DEBIT, amount),
                         new PostingEntry(userWallet.getId(), EntryType.CREDIT, amount)
                 )
-        );
-
-        LedgerTransaction tx = ledgerService.post(postingRequest);
+        ));
 
         topup.setStatus("PAID");
         topup.setLedgerTransactionId(tx.getId());
         topupRepository.save(topup);
 
-        // Record outbox event
         Map<String, Object> outboxPayload = Map.of(
-                "topupId", topup.getId(),
-                "userId", topup.getUserId(),
+                "topupId", topup.getId().toString(),
+                "userId", topup.getUserId().toString(),
                 "amountVnd", topup.getAmountVnd(),
                 "gateway", topup.getGateway(),
                 "paidAt", Instant.now().toString()
         );
         outboxService.recordEvent("Topup", topup.getId().toString(), RabbitMQConfig.ROUTING_KEY_WALLET_TOPUP, outboxPayload);
 
-        // Send WS notification
         messagingTemplate.convertAndSendToUser(topup.getUserId().toString(), "/queue/payment-status", Map.of(
                 "type", "TOPUP_SUCCESS",
                 "topupId", topup.getId(),
@@ -178,4 +170,3 @@ public class TopupService {
         );
     }
 }
-

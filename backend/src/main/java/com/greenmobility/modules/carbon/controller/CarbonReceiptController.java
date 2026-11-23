@@ -24,15 +24,17 @@ public class CarbonReceiptController {
         this.carbonCalculationService = carbonCalculationService;
     }
 
-    @Operation(summary = "Xem Hóa đơn Tác động Xanh của chuyến đi", description = "Tra cứu lượng CO2 giảm, các chỉ số sinh thái tương đương (cây xanh, đèn LED, sạc pin) theo Trip ID")
+    @Operation(summary = "Xem Hóa đơn Tác động Xanh của chuyến đi")
     @GetMapping("/receipts/trip/{tripId}")
     public ResponseEntity<ApiResponse<TripImpactReceiptDto>> getReceiptByTripId(
+            @AuthenticationPrincipal UserPrincipal currentUser,
             @PathVariable UUID tripId) {
-        TripImpactReceiptDto dto = carbonCalculationService.getReceiptByTripId(tripId);
+        String role = currentUser.getAuthorities().stream().findFirst().map(Object::toString).orElse("ROLE_CUSTOMER");
+        TripImpactReceiptDto dto = carbonCalculationService.getReceiptByTripId(tripId, currentUser.getId(), role);
         return ResponseEntity.ok(ApiResponse.ok("Tra cứu hóa đơn tác động xanh thành công", dto));
     }
 
-    @Operation(summary = "Xem Chứng nhận Tác động Xanh công khai", description = "Truy cập chứng nhận xanh công khai qua shareable slug (không cần xác thực)")
+    @Operation(summary = "Xem Chứng nhận Tác động Xanh công khai")
     @GetMapping("/receipts/share/{slug}")
     public ResponseEntity<ApiResponse<TripImpactReceiptDto>> getReceiptByShareableSlug(
             @PathVariable String slug) {
@@ -40,7 +42,7 @@ public class CarbonReceiptController {
         return ResponseEntity.ok(ApiResponse.ok("Tra cứu chứng nhận xanh công khai thành công", dto));
     }
 
-    @Operation(summary = "Thống kê giảm phát thải Carbon của người dùng hiện tại", description = "Lấy tổng lượng CO2 tiết kiệm, tổng số chuyến xanh, số ngày cây xanh và tín chỉ carbon cá nhân")
+    @Operation(summary = "Thống kê giảm phát thải Carbon của người dùng hiện tại")
     @GetMapping("/user/summary")
     public ResponseEntity<ApiResponse<UserCarbonSummaryDto>> getUserCarbonSummary(
             @AuthenticationPrincipal UserPrincipal currentUser) {

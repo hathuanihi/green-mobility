@@ -2,35 +2,47 @@
 
 class WalletBalanceModel {
   final int balanceVnd;
+  final int? earningsBalanceVnd;
   final int pendingHoldVnd;
   final int cashDebtVnd;
   final int availableBalanceVnd;
+  final bool cashTripsAllowed;
   final String currency;
   final String updatedAt;
 
   const WalletBalanceModel({
     required this.balanceVnd,
+    this.earningsBalanceVnd,
     this.pendingHoldVnd = 0,
     this.cashDebtVnd = 0,
     required this.availableBalanceVnd,
+    this.cashTripsAllowed = true,
     this.currency = 'VND',
     required this.updatedAt,
   });
 
   factory WalletBalanceModel.fromJson(Map<String, dynamic> json) {
+    final bal = (json['balanceVnd'] is num)
+        ? (json['balanceVnd'] as num).toInt()
+        : int.tryParse(json['balanceVnd']?.toString() ?? '0') ?? 0;
+    final rawHold = json['holdVnd'] ?? json['pendingHoldVnd'] ?? 0;
+    final hold = (rawHold is num) ? rawHold.toInt() : int.tryParse(rawHold.toString()) ?? 0;
+    final rawAvail = json['availableBalanceVnd'] ?? bal;
+    final avail = (rawAvail is num) ? rawAvail.toInt() : int.tryParse(rawAvail.toString()) ?? bal;
+
     return WalletBalanceModel(
-      balanceVnd: (json['balanceVnd'] is num)
-          ? (json['balanceVnd'] as num).toInt()
-          : int.tryParse(json['balanceVnd']?.toString() ?? '0') ?? 0,
-      pendingHoldVnd: (json['pendingHoldVnd'] is num)
-          ? (json['pendingHoldVnd'] as num).toInt()
-          : int.tryParse(json['pendingHoldVnd']?.toString() ?? '0') ?? 0,
+      balanceVnd: bal,
+      earningsBalanceVnd: json['earningsBalanceVnd'] != null
+          ? ((json['earningsBalanceVnd'] is num)
+              ? (json['earningsBalanceVnd'] as num).toInt()
+              : int.tryParse(json['earningsBalanceVnd'].toString()))
+          : null,
+      pendingHoldVnd: hold,
       cashDebtVnd: (json['cashDebtVnd'] is num)
           ? (json['cashDebtVnd'] as num).toInt()
           : int.tryParse(json['cashDebtVnd']?.toString() ?? '0') ?? 0,
-      availableBalanceVnd: (json['availableBalanceVnd'] is num)
-          ? (json['availableBalanceVnd'] as num).toInt()
-          : int.tryParse(json['availableBalanceVnd']?.toString() ?? '0') ?? 0,
+      availableBalanceVnd: avail,
+      cashTripsAllowed: json['cashTripsAllowed'] != false,
       currency: json['currency']?.toString() ?? 'VND',
       updatedAt: json['updatedAt']?.toString() ?? DateTime.now().toIso8601String(),
     );
@@ -38,9 +50,11 @@ class WalletBalanceModel {
 
   Map<String, dynamic> toJson() => {
     'balanceVnd': balanceVnd,
+    if (earningsBalanceVnd != null) 'earningsBalanceVnd': earningsBalanceVnd,
     'pendingHoldVnd': pendingHoldVnd,
     'cashDebtVnd': cashDebtVnd,
     'availableBalanceVnd': availableBalanceVnd,
+    'cashTripsAllowed': cashTripsAllowed,
     'currency': currency,
     'updatedAt': updatedAt,
   };
@@ -48,9 +62,9 @@ class WalletBalanceModel {
 
 class WalletTransactionModel {
   final String id;
-  final String type; // TOPUP, TRIP_FARE, TRIP_EARNING, COMMISSION, WITHDRAWAL, REFUND
+  final String type;
   final int amountVnd;
-  final String direction; // CREDIT, DEBIT
+  final String direction; // IN/CREDIT, OUT/DEBIT
   final int balanceAfterVnd;
   final String description;
   final String? referenceId;
@@ -66,6 +80,8 @@ class WalletTransactionModel {
     this.referenceId,
     required this.createdAt,
   });
+
+  bool get isCredit => direction.toUpperCase() == 'IN' || direction.toUpperCase() == 'CREDIT';
 
   factory WalletTransactionModel.fromJson(Map<String, dynamic> json) {
     return WalletTransactionModel(

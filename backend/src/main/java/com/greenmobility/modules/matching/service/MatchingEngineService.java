@@ -53,6 +53,12 @@ public class MatchingEngineService {
     private final SimpMessagingTemplate messagingTemplate;
     private final FareCalculationService fareCalculationService;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.greenmobility.modules.payment.api.PaymentModuleApi paymentModuleApi;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.greenmobility.modules.incentive.api.IncentiveModuleApi incentiveModuleApi;
+
     public MatchingEngineService(DriverGeoRedisRepository driverGeoRepository,
                                  DriverProfileRepository driverProfileRepository,
                                  VehicleRepository vehicleRepository,
@@ -115,7 +121,8 @@ public class MatchingEngineService {
             }
 
             // Score and sort candidates
-            List<ScoredDriver> scoredDrivers = scoreAndFilterCandidates(candidates, tripId, radiusKm, minBatteryRequired);
+            List<ScoredDriver> scoredDrivers = scoreAndFilterCandidates(
+                    candidates, tripId, radiusKm, minBatteryRequired, trip.getPaymentMethod());
             log.info("Found {} eligible candidate drivers in Tier {}", scoredDrivers.size(), tierIdx + 1);
 
             for (ScoredDriver candidate : scoredDrivers) {
@@ -204,6 +211,9 @@ public class MatchingEngineService {
             finalCheck.setCancelledBy("SYSTEM");
             finalCheck.setCancelReason("NO_DRIVER_AVAILABLE");
             tripRepository.save(finalCheck);
+            if (incentiveModuleApi != null && finalCheck.getVoucherRedemptionId() != null) {
+                incentiveModuleApi.releaseVoucherForCancelledTrip(tripId);
+            }
 
             TripStatusUpdateDto cancelDto = new TripStatusUpdateDto();
             cancelDto.setTripId(tripId);
@@ -218,7 +228,8 @@ public class MatchingEngineService {
 
     private List<ScoredDriver> scoreAndFilterCandidates(
             List<DriverGeoRedisRepository.DriverCandidateLocation> candidates,
-            UUID tripId, double radiusMaxKm, int minBatteryRequired) {
+            UUID tripId, double radiusMaxKm, int minBatteryRequired,
+            com.greenmobility.modules.trip.entity.PaymentMethod paymentMethod) {
 
         List<ScoredDriver> list = new ArrayList<>();
 
@@ -242,6 +253,14 @@ public class MatchingEngineService {
 
             DriverProfile profile = profileOpt.get();
             if (profile.getKycStatus() != KycStatus.APPROVED || !Boolean.TRUE.equals(profile.getIsActiveShift())) {
+                continue;
+            }
+
+            if (paymentMethod == com.greenmobility.modules.trip.entity.PaymentMethod.CASH
+                    && paymentModuleApi != null
+                    && !paymentModuleApi.canAcceptCashTrips(profile.getUserId())) {
+                log.debug("Skipping driver {} (user {}) for CASH trip due to cash debt limit exceeded",
+                        driverId, profile.getUserId());
                 continue;
             }
 

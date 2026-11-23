@@ -1,12 +1,19 @@
 package com.greenmobility.modules.payment.service;
 
 import com.greenmobility.common.exception.PaymentBusinessException;
+import com.greenmobility.common.platform.service.AuditLogService;
+import com.greenmobility.common.platform.service.OutboxService;
 import com.greenmobility.config.RabbitMQConfig;
-import com.greenmobility.modules.payment.domain.*;
+import com.greenmobility.modules.ledger.api.PostingEntry;
+import com.greenmobility.modules.ledger.api.PostingRequest;
+import com.greenmobility.modules.ledger.domain.AccountType;
+import com.greenmobility.modules.ledger.domain.EntryType;
+import com.greenmobility.modules.ledger.domain.LedgerAccount;
+import com.greenmobility.modules.ledger.domain.LedgerTransaction;
+import com.greenmobility.modules.ledger.domain.LedgerTxType;
+import com.greenmobility.modules.ledger.service.LedgerService;
+import com.greenmobility.modules.payment.domain.Payment;
 import com.greenmobility.modules.payment.dto.AdminFinanceDtos;
-import com.greenmobility.modules.payment.ledger.LedgerService;
-import com.greenmobility.modules.payment.ledger.PostingEntry;
-import com.greenmobility.modules.payment.ledger.PostingRequest;
 import com.greenmobility.modules.payment.repository.PaymentRepository;
 import com.greenmobility.modules.trip.api.TripModuleApi;
 import com.greenmobility.modules.trip.entity.PaymentStatus;
@@ -78,10 +85,7 @@ public class RefundService {
         }
 
         String method = payment.getMethod();
-        UUID ledgerTxId = null;
-
         if (!"CASH".equalsIgnoreCase(method)) {
-            // Proportional split (§2.2): C' = round(R * C / F), D' = R - C'
             CommissionService.RefundSplit split = commissionService.calculateRefundSplit(
                     r,
                     payment.getAmountVnd(),
@@ -89,17 +93,20 @@ public class RefundService {
             );
 
             LedgerAccount userWallet = ledgerService.getOrCreateUserWallet(payment.getCustomerId());
+            LedgerAccount platformRev = ledgerService.getSystemAccount(AccountType.PLATFORM_REVENUE);
             LedgerAccount driverEarnings = payment.getDriverUserId() != null
                     ? ledgerService.getOrCreateDriverEarningsAccount(payment.getDriverUserId())
                     : null;
-            LedgerAccount platformRev = ledgerService.getSystemAccount(AccountType.PLATFORM_REVENUE);
 
             List<PostingEntry> entries = new ArrayList<>();
-            if (driverEarnings != null && split.driverRefundVnd() > 0) {
-                entries.add(new PostingEntry(driverEarnings.getId(), EntryType.DEBIT, BigDecimal.valueOf(split.driverRefundVnd())));
+            long driverDebit = (driverEarnings != null) ? split.driverRefundVnd() : 0L;
+            long platformDebit = r - driverDebit;
+
+            if (driverEarnings != null && driverDebit > 0) {
+                entries.add(new PostingEntry(driverEarnings.getId(), EntryType.DEBIT, BigDecimal.valueOf(driverDebit)));
             }
-            if (split.commissionRefundVnd() > 0) {
-                entries.add(new PostingEntry(platformRev.getId(), EntryType.DEBIT, BigDecimal.valueOf(split.commissionRefundVnd())));
+            if (platformDebit > 0) {
+                entries.add(new PostingEntry(platformRev.getId(), EntryType.DEBIT, BigDecimal.valueOf(platformDebit)));
             }
             entries.add(new PostingEntry(userWallet.getId(), EntryType.CREDIT, BigDecimal.valueOf(r)));
 
@@ -114,10 +121,8 @@ public class RefundService {
                     payment.getLedgerTransactionId(),
                     entries
             );
-            LedgerTransaction tx = ledgerService.post(postReq);
-            ledgerTxId = tx.getId();
+            ledgerService.post(postReq);
         } else if (request.refundCommission()) {
-            // For CASH, if refundCommission=true, reverse platform commission back to driver
             CommissionService.RefundSplit split = commissionService.calculateRefundSplit(
                     r,
                     payment.getAmountVnd(),
@@ -162,13 +167,14 @@ public class RefundService {
 
         outboxService.recordEvent("Payment", payment.getId().toString(),
                 RabbitMQConfig.ROUTING_KEY_PAYMENT_REFUNDED, Map.of(
-                        "paymentId", payment.getId(),
-                        "tripId", payment.getTripId(),
+                        "paymentId", payment.getId().toString(),
+                        "tripId", payment.getTripId().toString(),
+                        "customerId", payment.getCustomerId().toString(),
                         "refundAmountVnd", r,
                         "totalRefundedVnd", newRefunded,
+                        "fullRefund", isFullRefund,
                         "status", newStatus,
                         "reason", request.reason()
                 ));
     }
 }
-

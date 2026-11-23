@@ -31,5 +31,8 @@ public interface WithdrawalRequestRepository extends JpaRepository<WithdrawalReq
             "AND w.status IN ('PENDING', 'APPROVED_PAID') " +
             "AND w.createdAt >= :startOfDay")
     Long calculateDailyWithdrawnAmount(@Param("driverUserId") UUID driverUserId, @Param("startOfDay") Instant startOfDay);
-}
 
+    @Query("SELECT COALESCE(SUM(w.amountVnd), 0) FROM WithdrawalRequest w " +
+            "WHERE w.driverUserId = :driverUserId AND w.status = 'PENDING'")
+    Long calculatePendingHoldAmount(@Param("driverUserId") UUID driverUserId);
+}

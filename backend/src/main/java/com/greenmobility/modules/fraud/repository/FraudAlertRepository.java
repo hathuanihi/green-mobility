@@ -4,6 +4,7 @@ import com.greenmobility.modules.fraud.entity.FraudAlert;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -12,4 +13,5 @@ public interface FraudAlertRepository extends JpaRepository<FraudAlert, UUID> {
     List<FraudAlert> findByOrderByCreatedAtDesc();
     List<FraudAlert> findByResolutionStatusOrderByCreatedAtDesc(String resolutionStatus);
     long countByResolutionStatus(String resolutionStatus);
+    boolean existsByTripIdAndResolutionStatusIn(UUID tripId, Collection<String> statuses);
 }

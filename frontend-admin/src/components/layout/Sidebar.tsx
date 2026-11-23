@@ -18,6 +18,8 @@ import {
   CreditCard,
   ArrowDownCircle,
   BarChart3,
+  Gift,
+  BookOpenCheck,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
@@ -30,6 +32,8 @@ const navItems = [
   { href: "/payments", label: "Giao dịch Thanh toán", icon: CreditCard },
   { href: "/withdrawals", label: "Duyệt Rút tiền", icon: ArrowDownCircle },
   { href: "/finance", label: "Đối soát & Tài chính", icon: BarChart3 },
+  { href: "/incentives/catalog", label: "Eco-Store & Khuyến khích", icon: Gift },
+  { href: "/incentives/ledger-audit", label: "Kiểm toán Sổ cái 3 Tiền tệ", icon: BookOpenCheck },
   { href: "/emissions", label: "Hệ số Phát thải", icon: Sliders },
   { href: "/fraud-monitor", label: "Giám sát Gian lận", icon: ShieldCheck },
   { href: "/ai-copilot", label: "AI Admin Copilot", icon: Bot },

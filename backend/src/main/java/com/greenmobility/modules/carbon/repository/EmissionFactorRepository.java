@@ -28,13 +28,16 @@ public interface EmissionFactorRepository extends JpaRepository<EmissionFactor, 
         if (!list.isEmpty()) {
             return Optional.of(list.get(0));
         }
-        // Fallback: any active factor for this category
         return findFirstByVehicleCategoryAndIsActiveTrueOrderByEffectiveFromDesc(category);
     }
 
     Optional<EmissionFactor> findFirstByVehicleCategoryAndIsActiveTrueOrderByEffectiveFromDesc(String category);
 
     List<EmissionFactor> findByVehicleCategory(String vehicleCategory);
+
+    List<EmissionFactor> findByVehicleCategoryAndIsActive(String vehicleCategory, Boolean isActive);
+
+    List<EmissionFactor> findByIsActive(Boolean isActive);
 
     List<EmissionFactor> findByIsActiveTrue();
 }

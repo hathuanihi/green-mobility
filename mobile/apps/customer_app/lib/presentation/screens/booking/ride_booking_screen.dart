@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:core_map/core_map.dart';
 import 'package:core_model/core_model.dart';
+import 'package:core_network/core_network.dart';
 import 'package:core_ui/core_ui.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/trip_repository.dart';
@@ -10,11 +11,13 @@ import 'searching_radar_screen.dart';
 class RideBookingScreen extends StatefulWidget {
   final TripRepository tripRepository;
   final AuthRepository? authRepository;
+  final IncentiveApi? incentiveApi;
 
   const RideBookingScreen({
     super.key,
     required this.tripRepository,
     this.authRepository,
+    this.incentiveApi,
   });
 
   @override
@@ -28,6 +31,9 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
   String _selectedVehicleType = VehicleTypes.electricMotorbike;
   String _selectedPaymentMethod = PaymentMethod.cash.value;
 
+  List<RedemptionItemModel> _availableVouchers = [];
+  RedemptionItemModel? _selectedVoucher;
+
   bool _isLoadingEstimate = false;
   bool _isRequestingTrip = false;
   String? _errorMessage;
@@ -40,6 +46,19 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
     _selectedPickup = PresetLocation.benThanh;
     _selectedDropoff = PresetLocation.landmark81;
     _loadEstimate();
+    _loadAvailableVouchers();
+  }
+
+  Future<void> _loadAvailableVouchers() async {
+    try {
+      final api = widget.incentiveApi ?? IncentiveApi(apiClient: widget.tripRepository.tripApi.apiClient);
+      final list = await api.getMyRedemptions(status: 'AVAILABLE');
+      if (mounted) {
+        setState(() {
+          _availableVouchers = list.where((v) => v.isUsableVoucher).toList();
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadEstimate() async {
@@ -56,6 +75,8 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
       dropoffLat: _selectedDropoff.lat,
       dropoffLng: _selectedDropoff.lng,
       vehicleType: _selectedVehicleType,
+      voucherRedemptionId: _selectedVoucher?.id,
+      voucherCode: _selectedVoucher?.redemptionCode,
     );
 
     try {
@@ -126,6 +147,8 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
       dropoffLng: _selectedDropoff.lng,
       vehicleType: _selectedVehicleType,
       paymentMethod: _selectedPaymentMethod,
+      voucherRedemptionId: _selectedVoucher?.id,
+      voucherCode: _selectedVoucher?.redemptionCode,
     );
 
     try {
@@ -174,8 +197,9 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final finalFare = _currentEstimate?.finalAmountVnd ?? _currentEstimate?.fareAmountVnd ?? 76000.0;
     final fareDisplay = _currentEstimate != null
-        ? GreenFormatters.currencyVnd(_currentEstimate!.fareAmountVnd)
+        ? GreenFormatters.currencyVnd(finalFare)
         : '76.000 đ';
 
     return Scaffold(
@@ -429,6 +453,94 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
                 ),
               ),
               const SizedBox(height: 20),
+
+              const SizedBox(height: 12),
+
+              // Voucher Picker
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: GreenColors.cardDark,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: _selectedVoucher != null ? GreenColors.primaryEmerald : GreenColors.cardBorder,
+                  ),
+                ),
+                child: InkWell(
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      backgroundColor: GreenColors.surfaceDark,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                      ),
+                      builder: (ctx) => Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Chọn Voucher Xanh',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                            const SizedBox(height: 12),
+                            if (_availableVouchers.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 20),
+                                child: Text('Bạn chưa có voucher khả dụng. Hãy đổi trong Eco-Store!',
+                                    style: TextStyle(color: GreenColors.textSecondary, fontSize: 13)),
+                              )
+                            else
+                              ..._availableVouchers.map((v) => ListTile(
+                                    title: Text(v.rewardTitle, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                                    subtitle: Text('Mã: ${v.redemptionCode}',
+                                        style: const TextStyle(color: GreenColors.primaryEmerald, fontSize: 12)),
+                                    trailing: _selectedVoucher?.id == v.id
+                                        ? const Icon(Icons.check_circle, color: GreenColors.primaryEmerald)
+                                        : null,
+                                    onTap: () {
+                                      Navigator.pop(ctx);
+                                      setState(() => _selectedVoucher = v);
+                                      _loadEstimate();
+                                    },
+                                  )),
+                            if (_selectedVoucher != null)
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  setState(() => _selectedVoucher = null);
+                                  _loadEstimate();
+                                },
+                                child: const Text('Bỏ chọn voucher', style: TextStyle(color: GreenColors.errorRed)),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                  child: Row(
+                    children: [
+                      const Icon(Icons.confirmation_number_rounded, color: GreenColors.primaryEmerald, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _selectedVoucher != null
+                              ? 'Voucher ${_selectedVoucher!.redemptionCode} (-${GreenFormatters.currencyVnd(_currentEstimate?.discountAmountVnd ?? 0)})'
+                              : (_availableVouchers.isEmpty
+                                  ? 'Ưu đãi Voucher Xanh (Chưa có mã)'
+                                  : 'Áp dụng Voucher (${_availableVouchers.length} mã khả dụng)'),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: _selectedVoucher != null ? GreenColors.primaryEmerald : Colors.white70,
+                            fontWeight: _selectedVoucher != null ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right, color: Colors.white54),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
 
               // Payment Method Picker
               Container(

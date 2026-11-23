@@ -4,7 +4,7 @@ import com.greenmobility.common.response.ApiResponse;
 import com.greenmobility.common.security.UserPrincipal;
 import com.greenmobility.modules.payment.dto.TopupDtos;
 import com.greenmobility.modules.payment.dto.WalletDtos;
-import com.greenmobility.modules.payment.service.IdempotencyService;
+import com.greenmobility.common.platform.service.IdempotencyService;
 import com.greenmobility.modules.payment.service.TopupService;
 import com.greenmobility.modules.payment.service.WalletService;
 import io.swagger.v3.oas.annotations.Operation;
