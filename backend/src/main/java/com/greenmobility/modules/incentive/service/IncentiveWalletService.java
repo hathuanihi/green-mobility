@@ -186,7 +186,7 @@ public class IncentiveWalletService {
     public IncentiveDtos.ConvertPccResponse convertPccToVnd(UUID userId, String userRole,
                                                             BigDecimal rawPccAmount, String idempotencyKey) {
         if (settingsService.isRedemptionsFrozen()) {
-            throw new PaymentBusinessException(HttpStatus.SERVICE_UNAVAILABLE, "INCENTIVE_SYSTEM_FROZEN",
+            throw new PaymentBusinessException(HttpStatus.CONFLICT, "REDEMPTION_FROZEN_CIRCUIT_BREAKER",
                     "Hệ thống đổi thưởng Carbon đang tạm khóa để kiểm toán an toàn");
         }
         if (rawPccAmount == null || rawPccAmount.compareTo(BigDecimal.ZERO) <= 0) {
@@ -201,10 +201,14 @@ public class IncentiveWalletService {
                     "Số lượng PCC quy đổi tối thiểu mỗi lần là " + minConvert + " PCC");
         }
 
-        // Lock user's PCC wallet first to serialize concurrent conversion calls against monthly cap!
-        LedgerAccount userPccAcc = ledgerModuleApi.getOrCreateCarbonWallet(userId);
-        LedgerAccount lockedPccAcc = accountRepository.findByIdWithLock(userPccAcc.getId())
-                .orElseThrow(() -> new PaymentBusinessException(HttpStatus.NOT_FOUND, "WALLET_NOT_FOUND", "Không tìm thấy ví PCC"));
+        // Acquire FOR UPDATE lock BEFORE loading LedgerAccount into L1 cache to avoid StaleObjectStateException
+        String pccAccountNumber = "WALLET:PCC:" + userId;
+        LedgerAccount lockedPccAcc = accountRepository.findByAccountNumberWithLock(pccAccountNumber).orElse(null);
+        if (lockedPccAcc == null) {
+            ledgerModuleApi.getOrCreateCarbonWallet(userId);
+            lockedPccAcc = accountRepository.findByAccountNumberWithLock(pccAccountNumber)
+                    .orElseThrow(() -> new PaymentBusinessException(HttpStatus.NOT_FOUND, "WALLET_NOT_FOUND", "Không tìm thấy ví PCC"));
+        }
 
         if (lockedPccAcc.isFrozen()) {
             throw new PaymentBusinessException(HttpStatus.CONFLICT, "WALLET_FROZEN",

@@ -88,7 +88,7 @@ public class EcoStoreService implements IncentiveModuleApi {
     @Transactional
     public IncentiveDtos.RedemptionResponseDto redeemReward(UUID userId, UUID rewardId, String idempotencyKey) {
         if (settingsService.isRedemptionsFrozen()) {
-            throw new PaymentBusinessException(HttpStatus.SERVICE_UNAVAILABLE, "INCENTIVE_SYSTEM_FROZEN",
+            throw new PaymentBusinessException(HttpStatus.CONFLICT, "REDEMPTION_FROZEN_CIRCUIT_BREAKER",
                     "Hệ thống đổi quà Eco-Store đang tạm khóa để kiểm toán");
         }
 
