@@ -7,81 +7,67 @@ class EarningsApi {
 
   EarningsApi({required this.apiClient});
 
-  /// Lấy tổng hợp thu nhập tài xế theo chu kỳ (TODAY, WEEK, MONTH)
   Future<DriverEarningsSummaryModel> getSummary({String period = 'TODAY'}) async {
     final response = await apiClient.dio.get(
       '/driver/earnings/summary',
-      queryParameters: {'period': period},
+      queryParameters: {'range': period},
     );
-    final resData = response.data;
-    if (resData is Map<String, dynamic> && resData['data'] != null) {
-      return DriverEarningsSummaryModel.fromJson(resData['data'] as Map<String, dynamic>);
-    }
-    throw Exception('Không thể tải tổng kết thu nhập');
+    final data = response.data['data'] as Map<String, dynamic>;
+    return DriverEarningsSummaryModel.fromJson(data);
   }
 
-  /// Danh sách chi tiết thu nhập từng cuốc xe
   Future<List<DriverTripEarningModel>> getTrips({
-    String? date,
-    int page = 0,
-    int size = 20,
+    String? cursor,
+    int limit = 20,
   }) async {
+    final query = <String, dynamic>{'limit': limit};
+    if (cursor != null && cursor.isNotEmpty) query['cursor'] = cursor;
+
     final response = await apiClient.dio.get(
       '/driver/earnings/trips',
-      queryParameters: {
-        if (date != null) 'date': date,
-        'page': page,
-        'size': size,
-      },
+      queryParameters: query,
     );
-    final resData = response.data;
-    if (resData is Map<String, dynamic> && resData['data'] != null) {
-      final list = resData['data']['content'] as List<dynamic>?;
-      return list
-              ?.map((e) => DriverTripEarningModel.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [];
-    }
-    throw Exception('Không thể tải danh sách cuốc xe');
+    final data = response.data['data'];
+    final List<dynamic> list = data is List
+        ? data
+        : (data is Map<String, dynamic> && data['items'] is List
+            ? data['items'] as List<dynamic>
+            : (data is Map<String, dynamic> && data['content'] is List
+                ? data['content'] as List<dynamic>
+                : []));
+    return list
+        .map((e) => DriverTripEarningModel.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
-  /// Gửi yêu cầu rút tiền về tài khoản ngân hàng
   Future<WithdrawalItemModel> requestWithdrawal(
     WithdrawalRequestModel request, {
     String? idempotencyKey,
   }) async {
-    final options = Options(
-      headers: {
-        if (idempotencyKey != null) 'Idempotency-Key': idempotencyKey,
-      },
-    );
+    final key = idempotencyKey ?? ApiClient.generateIdempotencyKey();
     final response = await apiClient.dio.post(
-      '/driver/wallet/withdraw',
+      '/driver/withdrawals',
       data: request.toJson(),
-      options: options,
+      options: Options(headers: {'Idempotency-Key': key}),
     );
-    final resData = response.data;
-    if (resData is Map<String, dynamic> && resData['data'] != null) {
-      return WithdrawalItemModel.fromJson(resData['data'] as Map<String, dynamic>);
-    }
-    throw Exception(resData?['message'] ?? 'Không thể gửi yêu cầu rút tiền');
+    final data = response.data['data'] as Map<String, dynamic>;
+    return WithdrawalItemModel.fromJson(data);
   }
 
-  /// Lịch sử các yêu cầu rút tiền
-  Future<List<WithdrawalItemModel>> getWithdrawals({int page = 0, int size = 20}) async {
-    final response = await apiClient.dio.get(
-      '/driver/wallet/withdrawals',
-      queryParameters: {'page': page, 'size': size},
-    );
-    final resData = response.data;
-    if (resData is Map<String, dynamic> && resData['data'] != null) {
-      final list = resData['data']['content'] as List<dynamic>?;
-      return list
-              ?.map((e) => WithdrawalItemModel.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [];
-    }
-    throw Exception('Không thể tải lịch sử rút tiền');
+  Future<List<WithdrawalItemModel>> getWithdrawals() async {
+    final response = await apiClient.dio.get('/driver/withdrawals');
+    final data = response.data['data'];
+    final List<dynamic> list = data is List
+        ? data
+        : (data is Map<String, dynamic> && data['content'] is List
+            ? data['content'] as List<dynamic>
+            : []);
+    return list
+        .map((e) => WithdrawalItemModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<void> cancelWithdrawal(String withdrawalId) async {
+    await apiClient.dio.delete('/driver/withdrawals/$withdrawalId');
   }
 }
-

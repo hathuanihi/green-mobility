@@ -8,6 +8,8 @@ export 'src/trip_api.dart';
 export 'src/payment_api.dart';
 export 'src/wallet_api.dart';
 export 'src/earnings_api.dart';
+export 'src/carbon_api.dart';
+export 'src/incentive_api.dart';
 export 'src/stomp_service.dart';
 
 class AppConfig {

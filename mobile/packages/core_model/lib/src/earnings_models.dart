@@ -22,28 +22,15 @@ class DriverEarningsSummaryModel {
   });
 
   factory DriverEarningsSummaryModel.fromJson(Map<String, dynamic> json) {
+    int parseInt(dynamic v) => (v is num) ? v.toInt() : int.tryParse(v?.toString() ?? '0') ?? 0;
     return DriverEarningsSummaryModel(
-      totalGrossVnd: (json['totalGrossVnd'] is num)
-          ? (json['totalGrossVnd'] as num).toInt()
-          : int.tryParse(json['totalGrossVnd']?.toString() ?? '0') ?? 0,
-      totalCommissionVnd: (json['totalCommissionVnd'] is num)
-          ? (json['totalCommissionVnd'] as num).toInt()
-          : int.tryParse(json['totalCommissionVnd']?.toString() ?? '0') ?? 0,
-      netEarningsVnd: (json['netEarningsVnd'] is num)
-          ? (json['netEarningsVnd'] as num).toInt()
-          : int.tryParse(json['netEarningsVnd']?.toString() ?? '0') ?? 0,
-      onlineEarningsVnd: (json['onlineEarningsVnd'] is num)
-          ? (json['onlineEarningsVnd'] as num).toInt()
-          : int.tryParse(json['onlineEarningsVnd']?.toString() ?? '0') ?? 0,
-      cashCollectedVnd: (json['cashCollectedVnd'] is num)
-          ? (json['cashCollectedVnd'] as num).toInt()
-          : int.tryParse(json['cashCollectedVnd']?.toString() ?? '0') ?? 0,
-      cashDebtRemainingVnd: (json['cashDebtRemainingVnd'] is num)
-          ? (json['cashDebtRemainingVnd'] as num).toInt()
-          : int.tryParse(json['cashDebtRemainingVnd']?.toString() ?? '0') ?? 0,
-      tripCount: (json['tripCount'] is num)
-          ? (json['tripCount'] as num).toInt()
-          : int.tryParse(json['tripCount']?.toString() ?? '0') ?? 0,
+      totalGrossVnd: parseInt(json['grossFareVnd'] ?? json['totalGrossVnd']),
+      totalCommissionVnd: parseInt(json['commissionVnd'] ?? json['totalCommissionVnd']),
+      netEarningsVnd: parseInt(json['netEarningsVnd']),
+      onlineEarningsVnd: parseInt(json['onlineCollectedVnd'] ?? json['onlineEarningsVnd']),
+      cashCollectedVnd: parseInt(json['cashCollectedVnd']),
+      cashDebtRemainingVnd: parseInt(json['cashDebtRemainingVnd']),
+      tripCount: parseInt(json['tripCount']),
       period: json['period']?.toString() ?? 'TODAY',
     );
   }
@@ -71,19 +58,14 @@ class DriverTripEarningModel {
   });
 
   factory DriverTripEarningModel.fromJson(Map<String, dynamic> json) {
+    int parseInt(dynamic v) => (v is num) ? v.toInt() : int.tryParse(v?.toString() ?? '0') ?? 0;
     return DriverTripEarningModel(
       tripId: json['tripId']?.toString() ?? '',
       tripCode: json['tripCode']?.toString() ?? '',
       completedAt: json['completedAt']?.toString() ?? '',
-      grossAmountVnd: (json['grossAmountVnd'] is num)
-          ? (json['grossAmountVnd'] as num).toInt()
-          : int.tryParse(json['grossAmountVnd']?.toString() ?? '0') ?? 0,
-      commissionVnd: (json['commissionVnd'] is num)
-          ? (json['commissionVnd'] as num).toInt()
-          : int.tryParse(json['commissionVnd']?.toString() ?? '0') ?? 0,
-      netEarnedVnd: (json['netEarnedVnd'] is num)
-          ? (json['netEarnedVnd'] as num).toInt()
-          : int.tryParse(json['netEarnedVnd']?.toString() ?? '0') ?? 0,
+      grossAmountVnd: parseInt(json['fareVnd'] ?? json['grossAmountVnd']),
+      commissionVnd: parseInt(json['commissionVnd']),
+      netEarnedVnd: parseInt(json['netIncomeVnd'] ?? json['netEarnedVnd']),
       paymentMethod: json['paymentMethod']?.toString() ?? 'CASH',
       isCash: json['paymentMethod']?.toString() == 'CASH',
     );

@@ -7,62 +7,47 @@ class WalletApi {
 
   WalletApi({required this.apiClient});
 
-  /// Lấy số dư ví (Balance, Available, Pending hold, Cash debt)
   Future<WalletBalanceModel> getBalance() async {
-    final response = await apiClient.dio.get('/wallet/balance');
-    final resData = response.data;
-    if (resData is Map<String, dynamic> && resData['data'] != null) {
-      return WalletBalanceModel.fromJson(resData['data'] as Map<String, dynamic>);
-    }
-    throw Exception('Không thể tải số dư Ví Xanh');
+    final response = await apiClient.dio.get('/wallet');
+    final data = response.data['data'] as Map<String, dynamic>;
+    return WalletBalanceModel.fromJson(data);
   }
 
-  /// Lịch sử biến động số dư theo Cursor pagination
   Future<WalletTransactionsCursorResponse> getTransactions({
+    String? type,
     String? cursor,
     int limit = 20,
   }) async {
-    final queryParams = {
-      if (cursor != null) 'cursor': cursor,
-      'limit': limit,
-    };
+    final query = <String, dynamic>{'limit': limit};
+    if (type != null && type.isNotEmpty) query['type'] = type;
+    if (cursor != null && cursor.isNotEmpty) query['cursor'] = cursor;
+
     final response = await apiClient.dio.get(
       '/wallet/transactions',
-      queryParameters: queryParams,
+      queryParameters: query,
     );
-    final resData = response.data;
-    if (resData is Map<String, dynamic> && resData['data'] != null) {
-      return WalletTransactionsCursorResponse.fromJson(resData['data'] as Map<String, dynamic>);
-    }
-    throw Exception('Không thể tải lịch sử giao dịch');
+    final data = response.data['data'] as Map<String, dynamic>;
+    return WalletTransactionsCursorResponse.fromJson(data);
   }
 
-  /// Khởi tạo nạp tiền vào Ví Xanh
   Future<TopupInitiateResponse> initiateTopup(
     int amountVnd,
     String gateway, {
     String? returnUrl,
     String? idempotencyKey,
   }) async {
-    final options = Options(
-      headers: {
-        if (idempotencyKey != null) 'Idempotency-Key': idempotencyKey,
-      },
+    final req = TopupInitiateRequest(
+      amountVnd: amountVnd,
+      gateway: gateway,
+      returnUrl: returnUrl,
     );
+    final key = idempotencyKey ?? ApiClient.generateIdempotencyKey();
     final response = await apiClient.dio.post(
-      '/wallet/topup/initiate',
-      data: {
-        'amountVnd': amountVnd,
-        'gateway': gateway,
-        if (returnUrl != null) 'returnUrl': returnUrl,
-      },
-      options: options,
+      '/wallet/topup',
+      data: req.toJson(),
+      options: Options(headers: {'Idempotency-Key': key}),
     );
-    final resData = response.data;
-    if (resData is Map<String, dynamic> && resData['data'] != null) {
-      return TopupInitiateResponse.fromJson(resData['data'] as Map<String, dynamic>);
-    }
-    throw Exception(resData?['message'] ?? 'Không thể khởi tạo yêu cầu nạp tiền');
+    final data = response.data['data'] as Map<String, dynamic>;
+    return TopupInitiateResponse.fromJson(data);
   }
 }
-

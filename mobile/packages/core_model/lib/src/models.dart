@@ -317,6 +317,10 @@ class TripEstimateModel {
   final int durationSeconds;
   final int durationMinutes;
   final double fareAmountVnd;
+  final double discountAmountVnd;
+  final double finalAmountVnd;
+  final String? voucherCode;
+  final String? voucherTitle;
   final CarbonEstimateModel? carbonEstimate;
   final String? routePolyline;
 
@@ -327,11 +331,27 @@ class TripEstimateModel {
     required this.durationSeconds,
     required this.durationMinutes,
     required this.fareAmountVnd,
+    this.discountAmountVnd = 0.0,
+    double? finalAmountVnd,
+    this.voucherCode,
+    this.voucherTitle,
     this.carbonEstimate,
     this.routePolyline,
-  });
+  }) : finalAmountVnd = finalAmountVnd ?? fareAmountVnd;
 
   factory TripEstimateModel.fromJson(Map<String, dynamic> json) {
+    final fare = (json['fareAmountVnd'] is num)
+        ? (json['fareAmountVnd'] as num).toDouble()
+        : double.tryParse(json['fareAmountVnd']?.toString() ?? '0') ?? 0.0;
+    final discount = (json['discountAmountVnd'] is num)
+        ? (json['discountAmountVnd'] as num).toDouble()
+        : double.tryParse(json['discountAmountVnd']?.toString() ?? '0') ?? 0.0;
+    final finalFare = json['finalAmountVnd'] != null
+        ? ((json['finalAmountVnd'] is num)
+            ? (json['finalAmountVnd'] as num).toDouble()
+            : double.tryParse(json['finalAmountVnd'].toString()) ?? (fare - discount))
+        : (fare - discount).clamp(0.0, double.infinity);
+
     return TripEstimateModel(
       vehicleType: json['vehicleType']?.toString() ?? '',
       distanceMeters: (json['distanceMeters'] is num)
@@ -346,9 +366,11 @@ class TripEstimateModel {
       durationMinutes: (json['durationMinutes'] is num)
           ? (json['durationMinutes'] as num).toInt()
           : int.tryParse(json['durationMinutes']?.toString() ?? '0') ?? 0,
-      fareAmountVnd: (json['fareAmountVnd'] is num)
-          ? (json['fareAmountVnd'] as num).toDouble()
-          : double.tryParse(json['fareAmountVnd']?.toString() ?? '0') ?? 0.0,
+      fareAmountVnd: fare,
+      discountAmountVnd: discount,
+      finalAmountVnd: finalFare,
+      voucherCode: json['voucherCode']?.toString(),
+      voucherTitle: json['voucherTitle']?.toString(),
       carbonEstimate: json['carbonEstimate'] != null
           ? CarbonEstimateModel.fromJson(json['carbonEstimate'] as Map<String, dynamic>)
           : null,
@@ -365,6 +387,8 @@ class TripEstimateRequestModel {
   final double dropoffLat;
   final double dropoffLng;
   final String? vehicleType;
+  final String? voucherRedemptionId;
+  final String? voucherCode;
 
   const TripEstimateRequestModel({
     required this.pickupAddress,
@@ -374,6 +398,8 @@ class TripEstimateRequestModel {
     required this.dropoffLat,
     required this.dropoffLng,
     this.vehicleType,
+    this.voucherRedemptionId,
+    this.voucherCode,
   });
 
   Map<String, dynamic> toJson() {
@@ -388,6 +414,12 @@ class TripEstimateRequestModel {
     if (vehicleType != null) {
       map['vehicleType'] = vehicleType;
     }
+    if (voucherRedemptionId != null) {
+      map['voucherRedemptionId'] = voucherRedemptionId;
+    }
+    if (voucherCode != null && voucherCode!.isNotEmpty) {
+      map['voucherCode'] = voucherCode;
+    }
     return map;
   }
 }
@@ -401,6 +433,8 @@ class TripRequestModel {
   final double dropoffLng;
   final String vehicleType;
   final String paymentMethod;
+  final String? voucherRedemptionId;
+  final String? voucherCode;
   final String? notes;
 
   const TripRequestModel({
@@ -412,6 +446,8 @@ class TripRequestModel {
     required this.dropoffLng,
     required this.vehicleType,
     this.paymentMethod = 'CASH',
+    this.voucherRedemptionId,
+    this.voucherCode,
     this.notes,
   });
 
@@ -426,6 +462,12 @@ class TripRequestModel {
       'vehicleType': vehicleType,
       'paymentMethod': paymentMethod,
     };
+    if (voucherRedemptionId != null) {
+      map['voucherRedemptionId'] = voucherRedemptionId;
+    }
+    if (voucherCode != null && voucherCode!.isNotEmpty) {
+      map['voucherCode'] = voucherCode;
+    }
     if (notes != null && notes!.isNotEmpty) {
       map['notes'] = notes;
     }
@@ -491,6 +533,8 @@ class TripModel {
   final double fareAmountVnd;
   final double discountAmountVnd;
   final double finalAmountVnd;
+  final String? voucherRedemptionId;
+  final String? voucherCode;
   final String paymentMethod;
   final String paymentStatus;
   final double estimatedDistanceKm;
@@ -516,6 +560,8 @@ class TripModel {
     required this.fareAmountVnd,
     required this.discountAmountVnd,
     required this.finalAmountVnd,
+    this.voucherRedemptionId,
+    this.voucherCode,
     required this.paymentMethod,
     required this.paymentStatus,
     required this.estimatedDistanceKm,
@@ -557,6 +603,8 @@ class TripModel {
       finalAmountVnd: (json['finalAmountVnd'] is num)
           ? (json['finalAmountVnd'] as num).toDouble()
           : double.tryParse(json['finalAmountVnd']?.toString() ?? '0') ?? 0.0,
+      voucherRedemptionId: json['voucherRedemptionId']?.toString(),
+      voucherCode: json['voucherCode']?.toString(),
       paymentMethod: json['paymentMethod']?.toString() ?? 'CASH',
       paymentStatus: json['paymentStatus']?.toString() ?? 'PENDING',
       estimatedDistanceKm: (json['estimatedDistanceKm'] is num)

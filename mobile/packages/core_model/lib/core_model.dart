@@ -6,3 +6,4 @@ export 'src/payment_models.dart';
 export 'src/wallet_models.dart';
 export 'src/earnings_models.dart';
 export 'src/withdrawal_models.dart';
+export 'src/incentive_models.dart';
