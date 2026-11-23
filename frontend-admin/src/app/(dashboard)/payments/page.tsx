@@ -20,9 +20,14 @@ import {
 import Header from "@/components/layout/Header";
 import KpiCard from "@/components/ui/KpiCard";
 import apiClient from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { useToast } from "@/components/Toast";
 import { ApiResponse, PaymentItem, PaymentDetailData } from "@/types";
 
 export default function PaymentsPage() {
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const isReadOnly = user?.role === "ROLE_OPERATOR";
   const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -100,15 +105,15 @@ export default function PaymentsPage() {
       await apiClient.post(`/admin/payments/${selectedPaymentId}/requery`);
       await openDetail(selectedPaymentId);
       await fetchPayments();
-      alert("Đã hoàn tất kiểm tra trạng thái từ cổng thanh toán!");
+      showToast("Đã hoàn tất kiểm tra trạng thái từ cổng thanh toán!", "success");
     } catch (err: any) {
-      alert("Lỗi requery: " + (err.response?.data?.message || err.message));
+      showToast("Lỗi requery: " + (err.response?.data?.message || err.message), "error");
     }
   };
 
   const handleRefundSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPaymentId) return;
+    if (!selectedPaymentId || isReadOnly) return;
     if (refundReason.trim().length < 10) {
       setRefundError("Lý do hoàn tiền phải có ít nhất 10 ký tự.");
       return;
@@ -121,16 +126,20 @@ export default function PaymentsPage() {
     setIsRefunding(true);
     setRefundError(null);
     try {
-      await apiClient.post(`/admin/payments/${selectedPaymentId}/refund`, {
-        amountVnd: refundAmount,
-        reason: refundReason,
-        refundCommission: refundCommission,
-      });
+      await apiClient.post(
+        `/admin/payments/${selectedPaymentId}/refund`,
+        {
+          amountVnd: refundAmount,
+          reason: refundReason,
+          refundCommission: refundCommission,
+        },
+        { headers: { "Idempotency-Key": crypto.randomUUID() } }
+      );
       setShowRefundModal(false);
       setRefundReason("");
       await openDetail(selectedPaymentId);
       await fetchPayments();
-      alert("Xử lý hoàn tiền thành công!");
+      showToast("Xử lý hoàn tiền thành công!", "success");
     } catch (err: any) {
       setRefundError(err.response?.data?.message || "Lỗi xử lý hoàn tiền");
     } finally {
@@ -367,7 +376,7 @@ export default function PaymentsPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {["VNPAY", "MOMO"].includes(detailData.payment.method) && (
+                    {!isReadOnly && ["VNPAY", "MOMO"].includes(detailData.payment.method) && (
                       <button
                         onClick={handleRequery}
                         className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg flex items-center gap-1.5"
@@ -377,7 +386,7 @@ export default function PaymentsPage() {
                       </button>
                     )}
 
-                    {["PAID", "PARTIALLY_REFUNDED"].includes(detailData.payment.status) && (
+                    {!isReadOnly && ["PAID", "PARTIALLY_REFUNDED"].includes(detailData.payment.status) && (
                       <button
                         onClick={() => {
                           setRefundAmount(detailData.payment.amountVnd);

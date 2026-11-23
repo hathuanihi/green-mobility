@@ -244,6 +244,34 @@ public class AdminLedgerAuditController {
                 accountRepository.findByStatusOrderByCreatedAtDesc("FROZEN")));
     }
 
+    @Operation(summary = "Đóng băng Ví Carbon (PCC & Eco-Point) của người dùng nghi vấn gian lận")
+    @PostMapping("/users/{userId}/freeze")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_FINANCE')")
+    public ResponseEntity<ApiResponse<LedgerAccount>> freezeUserWallets(
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @PathVariable UUID userId,
+            @RequestBody(required = false) CircuitBreakerRequest body,
+            HttpServletRequest request) {
+        String reason = body != null ? body.reason() : "Tạm đóng băng kiểm tra an toàn";
+        LedgerAccount frozen = ledgerModuleApi.freezeUserCarbonWallets(
+                userId, currentUser.getId(), currentUser.getUsername(), reason, request.getRemoteAddr());
+        return ResponseEntity.ok(ApiResponse.ok("Đã đóng băng ví Carbon của người dùng", frozen));
+    }
+
+    @Operation(summary = "Mở khóa Ví Carbon (PCC & Eco-Point) của người dùng")
+    @PostMapping("/users/{userId}/unfreeze")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_FINANCE')")
+    public ResponseEntity<ApiResponse<LedgerAccount>> unfreezeUserWallets(
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @PathVariable UUID userId,
+            @RequestBody(required = false) CircuitBreakerRequest body,
+            HttpServletRequest request) {
+        String reason = body != null ? body.reason() : "Hoàn tất rà soát, mở khóa ví";
+        LedgerAccount unfrozen = ledgerModuleApi.unfreezeUserCarbonWallets(
+                userId, currentUser.getId(), currentUser.getUsername(), reason, request.getRemoteAddr());
+        return ResponseEntity.ok(ApiResponse.ok("Đã mở khóa ví Carbon của người dùng", unfrozen));
+    }
+
     private LedgerTransactionSummaryDto toSummaryDto(LedgerTransaction tx) {
         List<LedgerEntry> entries = entryRepository.findByTransactionId(tx.getId());
         String currency = "VND";

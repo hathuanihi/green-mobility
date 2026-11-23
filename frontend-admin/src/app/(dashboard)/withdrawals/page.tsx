@@ -16,9 +16,14 @@ import {
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import apiClient from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { useToast } from "@/components/Toast";
 import { ApiResponse, WithdrawalItem } from "@/types";
 
 export default function WithdrawalsPage() {
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const isReadOnly = user?.role === "ROLE_OPERATOR";
   const [withdrawals, setWithdrawals] = useState<WithdrawalItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -69,9 +74,9 @@ export default function WithdrawalsPage() {
       setApprovingItem(null);
       setBankRef("");
       await fetchWithdrawals();
-      alert("Đã phê duyệt yêu cầu rút tiền thành công!");
+      showToast("Đã phê duyệt yêu cầu rút tiền thành công!", "success");
     } catch (err: any) {
-      alert("Lỗi khi duyệt rút tiền: " + (err.response?.data?.message || err.message));
+      showToast("Lỗi khi duyệt rút tiền: " + (err.response?.data?.message || err.message), "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -79,9 +84,9 @@ export default function WithdrawalsPage() {
 
   const handleReject = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rejectingItem) return;
+    if (!rejectingItem || isReadOnly) return;
     if (!rejectReason.trim()) {
-      alert("Vui lòng nhập lý do từ chối yêu cầu.");
+      showToast("Vui lòng nhập lý do từ chối yêu cầu.", "warning");
       return;
     }
     setIsSubmitting(true);
@@ -92,9 +97,9 @@ export default function WithdrawalsPage() {
       setRejectingItem(null);
       setRejectReason("");
       await fetchWithdrawals();
-      alert("Đã từ chối và hoàn tiền giữ lại về ví tài xế!");
+      showToast("Đã từ chối và hoàn tiền giữ lại về ví tài xế!", "success");
     } catch (err: any) {
-      alert("Lỗi khi từ chối rút tiền: " + (err.response?.data?.message || err.message));
+      showToast("Lỗi khi từ chối rút tiền: " + (err.response?.data?.message || err.message), "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -226,7 +231,7 @@ export default function WithdrawalsPage() {
                       {new Date(w.createdAt).toLocaleString("vi-VN")}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      {w.status === "PENDING" ? (
+                      {w.status === "PENDING" && !isReadOnly ? (
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => setApprovingItem(w)}

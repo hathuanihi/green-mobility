@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 @Tag(name = "4. Admin Fraud & Safety Monitoring", description = "Các API Giám sát Gian lận GPS, Tốc độ dị thường và Rủi ro hành trình")
 @RestController
 @RequestMapping("/admin/fraud")
-@PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_OPERATOR')")
+@PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_FINANCE', 'ROLE_OPERATOR')")
 public class AdminFraudController {
 
     private final FraudAlertRepository fraudAlertRepository;
@@ -102,12 +102,14 @@ public class AdminFraudController {
             String driverName = "Tài xế Hệ Thống";
             String driverPhone = "-";
             String vehiclePlate = "-";
+            UUID driverUserId = null;
 
             if (a.getDriverId() != null) {
                 Optional<DriverProfile> p = driverProfileRepository.findById(a.getDriverId());
                 if (p.isPresent()) {
-                    if (p.get().getUserId() != null) {
-                        Optional<User> u = userRepository.findById(p.get().getUserId());
+                    driverUserId = p.get().getUserId();
+                    if (driverUserId != null) {
+                        Optional<User> u = userRepository.findById(driverUserId);
                         if (u.isPresent()) {
                             driverName = u.get().getFullName();
                             driverPhone = u.get().getPhoneNumber();
@@ -120,7 +122,7 @@ public class AdminFraudController {
                 }
             }
 
-            return FraudAlertDto.fromEntity(a, driverName, driverPhone, vehiclePlate);
+            return FraudAlertDto.fromEntity(a, driverUserId, driverName, driverPhone, vehiclePlate);
         }).collect(Collectors.toList());
 
         return ResponseEntity.ok(ApiResponse.ok("Lấy danh sách cảnh báo thành công", dtos));
