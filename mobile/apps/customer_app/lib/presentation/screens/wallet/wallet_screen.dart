@@ -1,11 +1,17 @@
-import 'package:flutter/material.dart';
 import 'package:core_model/core_model.dart';
 import 'package:core_network/core_network.dart';
+import 'package:core_ui/core_ui.dart';
+import 'package:flutter/material.dart';
 
 class WalletScreen extends StatefulWidget {
   final WalletApi walletApi;
+  final IncentiveApi? incentiveApi;
 
-  const WalletScreen({super.key, required this.walletApi});
+  const WalletScreen({
+    super.key,
+    required this.walletApi,
+    this.incentiveApi,
+  });
 
   @override
   State<WalletScreen> createState() => _WalletScreenState();
@@ -13,11 +19,12 @@ class WalletScreen extends StatefulWidget {
 
 class _WalletScreenState extends State<WalletScreen> {
   WalletBalanceModel? _balance;
+  IncentiveSummaryModel? _incentiveSummary;
   List<WalletTransactionModel> _transactions = [];
+  List<IncentiveLedgerEntryModel> _incentiveEntries = [];
+
   bool _isLoadingBalance = true;
-  bool _isLoadingHistory = false;
-  String? _nextCursor;
-  bool _hasMore = false;
+  int _historyTabIndex = 0; // 0: VND, 1: PCC & Eco-Points
 
   @override
   void initState() {
@@ -26,374 +33,457 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Future<void> _loadAll() async {
-    await Future.wait([
-      _loadBalance(),
-      _loadTransactions(refresh: true),
-    ]);
-  }
-
-  Future<void> _loadBalance() async {
     setState(() => _isLoadingBalance = true);
     try {
-      final b = await widget.walletApi.getBalance();
-      setState(() {
-        _balance = b;
-        _isLoadingBalance = false;
-      });
+      final futures = <Future<dynamic>>[
+        widget.walletApi.getBalance(),
+        widget.walletApi.getTransactions(limit: 20),
+        if (widget.incentiveApi != null) widget.incentiveApi!.getSummary(),
+        if (widget.incentiveApi != null) widget.incentiveApi!.getLedgerHistory(limit: 20),
+      ];
+      final res = await Future.wait(futures);
+      if (mounted) {
+        setState(() {
+          _balance = res[0] as WalletBalanceModel;
+          _transactions = (res[1] as WalletTransactionsCursorResponse).items;
+          if (widget.incentiveApi != null) {
+            _incentiveSummary = res[2] as IncentiveSummaryModel;
+            _incentiveEntries = (res[3] as IncentiveLedgerPageModel).items;
+          }
+          _isLoadingBalance = false;
+        });
+      }
     } catch (_) {
-      setState(() => _isLoadingBalance = false);
+      if (mounted) setState(() => _isLoadingBalance = false);
     }
   }
 
-  Future<void> _loadTransactions({bool refresh = false}) async {
-    if (_isLoadingHistory) return;
-    setState(() => _isLoadingHistory = true);
-
-    try {
-      final res = await widget.walletApi.getTransactions(
-        cursor: refresh ? null : _nextCursor,
-        limit: 20,
-      );
-
-      setState(() {
-        if (refresh) {
-          _transactions = res.items;
-        } else {
-          _transactions.addAll(res.items);
-        }
-        _nextCursor = res.nextCursor;
-        _hasMore = res.hasMore;
-        _isLoadingHistory = false;
-      });
-    } catch (_) {
-      setState(() => _isLoadingHistory = false);
-    }
-  }
-
-  void _showTopupModal() {
+  void _showTopupSheet() {
     int selectedAmount = 100000;
     String selectedGateway = 'VNPAY';
+    final List<int> presets = [50000, 100000, 200000, 500000, 1000000];
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: GreenColors.surfaceDark,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) {
-          return Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text('Nạp tiền Ví Xanh', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
-                const Text('Chọn số tiền nạp', style: TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [50000, 100000, 200000, 500000].map((amt) {
-                    final isSel = selectedAmount == amt;
-                    return InkWell(
-                      onTap: () => setModalState(() => selectedAmount = amt),
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: isSel ? const Color(0xFF10B981).withOpacity(0.1) : Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: isSel ? const Color(0xFF10B981) : Colors.transparent,
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Text(
-                          '${_formatVnd(amt)} đ',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: isSel ? const Color(0xFF10B981) : Colors.black87,
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 20),
-                const Text('Cổng thanh toán', style: TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: InkWell(
-                        onTap: () => setModalState(() => selectedGateway = 'VNPAY'),
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: selectedGateway == 'VNPAY' ? const Color(0xFF005BAA) : Colors.grey.shade300,
-                              width: 1.5,
-                            ),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          alignment: Alignment.center,
-                          child: const Text('VNPay', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: InkWell(
-                        onTap: () => setModalState(() => selectedGateway = 'MOMO'),
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: selectedGateway == 'MOMO' ? const Color(0xFFA50064) : Colors.grey.shade300,
-                              width: 1.5,
-                            ),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          alignment: Alignment.center,
-                          child: const Text('MoMo', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      Navigator.pop(ctx);
-                      try {
-                        final res = await widget.walletApi.initiateTopup(
-                          selectedAmount,
-                          selectedGateway,
-                          returnUrl: 'greenmobility://payment/result?topup=true',
-                        );
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Đã tạo yêu cầu nạp #${res.topupId}')),
-                          );
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-                          );
-                        }
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF10B981),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('Tiến hành nạp tiền', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  String _formatVnd(int amount) {
-    return amount.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]}.',
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      appBar: AppBar(
-        title: const Text('Ví Xanh (Green Wallet)', style: TextStyle(fontWeight: FontWeight.bold)),
-        elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-      ),
-      body: RefreshIndicator(
-        onRefresh: _loadAll,
-        color: const Color(0xFF10B981),
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
+        builder: (context, setModalState) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Balance Card
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF10B981), Color(0xFF047857)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+              const Text('Nạp tiền vào Ví Xanh', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: presets.map((amt) {
+                  final active = selectedAmount == amt;
+                  return ChoiceChip(
+                    label: Text(GreenFormatters.currencyVnd(amt.toDouble())),
+                    selected: active,
+                    selectedColor: GreenColors.primaryEmerald,
+                    backgroundColor: GreenColors.cardDark,
+                    labelStyle: TextStyle(
+                      color: active ? GreenColors.backgroundDark : Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    onSelected: (_) => setModalState(() => selectedAmount = amt),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: _gatewayOption(
+                      'VNPay QR',
+                      selectedGateway == 'VNPAY',
+                      () => setModalState(() => selectedGateway = 'VNPAY'),
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF10B981).withOpacity(0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _gatewayOption(
+                      'Ví MoMo',
+                      selectedGateway == 'MOMO',
+                      () => setModalState(() => selectedGateway = 'MOMO'),
                     ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Số dư khả dụng', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                    const SizedBox(height: 8),
-                    _isLoadingBalance
-                        ? const SizedBox(
-                            height: 38,
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-                              ),
-                            ),
-                          )
-                        : Text(
-                            '${_formatVnd(_balance?.availableBalanceVnd ?? 0)} đ',
-                            style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
-                          ),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: _showTopupModal,
-                          icon: const Icon(Icons.add_rounded, size: 20, color: Color(0xFF047857)),
-                          label: const Text('Nạp tiền', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF047857))),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    try {
+                      final res = await widget.walletApi.initiateTopup(
+                        selectedAmount,
+                        selectedGateway,
+                        returnUrl: 'greenmobility://payment/result?topup=true',
+                      );
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Đã tạo yêu cầu nạp #${res.topupId}')),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(e.toString()), backgroundColor: GreenColors.errorRed),
+                        );
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: GreenColors.primaryEmerald,
+                    foregroundColor: GreenColors.backgroundDark,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Tiếp tục thanh toán', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
-
-              const SizedBox(height: 24),
-              const Text('Lịch sử giao dịch', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
-              const SizedBox(height: 12),
-
-              // Transactions list
-              if (_transactions.isEmpty && !_isLoadingHistory)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 40),
-                  child: const Center(
-                    child: Text('Chưa có giao dịch nào', style: TextStyle(color: Colors.grey)),
-                  ),
-                )
-              else
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _transactions.length + (_hasMore ? 1 : 0),
-                  separatorBuilder: (_, __) => const Divider(height: 1, indent: 60),
-                  itemBuilder: (context, index) {
-                    if (index == _transactions.length) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: Center(
-                          child: TextButton(
-                            onPressed: () => _loadTransactions(),
-                            child: const Text('Tải thêm giao dịch'),
-                          ),
-                        ),
-                      );
-                    }
-
-                    final tx = _transactions[index];
-                    final isCredit = tx.direction == 'CREDIT';
-
-                    return Container(
-                      color: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: isCredit
-                                  ? const Color(0xFF10B981).withOpacity(0.12)
-                                  : Colors.red.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Icon(
-                              isCredit ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
-                              color: isCredit ? const Color(0xFF10B981) : Colors.red,
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  tx.description.isNotEmpty ? tx.description : tx.type,
-                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  tx.createdAt.length >= 10 ? tx.createdAt.substring(0, 10) : tx.createdAt,
-                                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Text(
-                            '${isCredit ? '+' : '-'}${_formatVnd(tx.amountVnd)} đ',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                              color: isCredit ? const Color(0xFF10B981) : Colors.red,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
             ],
           ),
         ),
       ),
     );
   }
-}
 
+  void _showConvertPccDialog() {
+    if (_incentiveSummary == null || widget.incentiveApi == null) return;
+    final ctrl = TextEditingController(
+      text: _incentiveSummary!.pccConvertMin.toStringAsFixed(2),
+    );
+    bool converting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: GreenColors.surfaceDark,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Quy đổi Tín chỉ Carbon → VNĐ', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              const SizedBox(height: 6),
+              Text(
+                'Tỷ giá trợ giá: ${GreenFormatters.currencyVnd(_incentiveSummary!.pccToVndRateVnd.toDouble())} / 1 PCC\nTối thiểu ${_incentiveSummary!.pccConvertMin} PCC • Trần tháng còn lại: ${GreenFormatters.pcc(_incentiveSummary!.remainingMonthlyCap)}',
+                style: const TextStyle(color: GreenColors.textSecondary, fontSize: 12),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: ctrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                decoration: InputDecoration(
+                  labelText: 'Số lượng PCC muốn quy đổi',
+                  labelStyle: const TextStyle(color: GreenColors.textSecondary),
+                  filled: true,
+                  fillColor: GreenColors.cardDark,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: converting
+                      ? null
+                      : () async {
+                          final amount = double.tryParse(ctrl.text.trim()) ?? 0.0;
+                          if (amount <= 0) return;
+                          setModalState(() => converting = true);
+                          try {
+                            final res = await widget.incentiveApi!.convertPccToVnd(amount);
+                            if (mounted) {
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Đã nhận +${GreenFormatters.currencyVnd(res.vndCredited.toDouble())} vào Ví Xanh!'),
+                                  backgroundColor: GreenColors.primaryDark,
+                                ),
+                              );
+                              await _loadAll();
+                            }
+                          } catch (e) {
+                            setModalState(() => converting = false);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')), backgroundColor: GreenColors.errorRed),
+                              );
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: GreenColors.primaryEmerald,
+                    foregroundColor: GreenColors.backgroundDark,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: Text(converting ? 'Đang quy đổi...' : 'Xác nhận quy đổi', style: const TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _gatewayOption(String title, bool active, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: active ? GreenColors.primaryEmerald.withValues(alpha: 0.15) : GreenColors.cardDark,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: active ? GreenColors.primaryEmerald : GreenColors.cardBorder),
+        ),
+        child: Center(
+          child: Text(
+            title,
+            style: TextStyle(color: active ? GreenColors.primaryEmerald : Colors.white, fontWeight: FontWeight.bold),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: GreenColors.backgroundDark,
+      appBar: AppBar(
+        backgroundColor: GreenColors.backgroundDark,
+        title: const Text('Ví Xanh & Tín chỉ Carbon', style: TextStyle(fontWeight: FontWeight.bold)),
+        actions: [
+          IconButton(onPressed: _loadAll, icon: const Icon(Icons.refresh_rounded, color: Colors.white70)),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _loadAll,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [Color(0xFF065F46), Color(0xFF047857)]),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Số dư Ví Xanh (VNĐ)', style: TextStyle(color: Color(0xFFD1FAE5), fontSize: 13)),
+                  const SizedBox(height: 6),
+                  Text(
+                    _isLoadingBalance
+                        ? '...'
+                        : GreenFormatters.currencyVnd((_balance?.availableBalanceVnd ?? 0).toDouble()),
+                    style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: _showTopupSheet,
+                    icon: const Icon(Icons.add_circle_outline, size: 18),
+                    label: const Text('Nạp tiền Ví Xanh', style: TextStyle(fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: const Color(0xFF047857),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (_incentiveSummary != null) ...[
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: GreenColors.surfaceDark,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: GreenColors.cardBorder),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('TÍN CHỈ CARBON (PCC)', style: TextStyle(color: GreenColors.textSecondary, fontSize: 11)),
+                              const SizedBox(height: 4),
+                              Text(
+                                GreenFormatters.pcc(_incentiveSummary!.pccBalance),
+                                style: const TextStyle(color: GreenColors.primaryEmerald, fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              const Text('ĐIỂM XANH (ECO-PTS)', style: TextStyle(color: GreenColors.textSecondary, fontSize: 11)),
+                              const SizedBox(height: 4),
+                              Text(
+                                GreenFormatters.ecoPoints(_incentiveSummary!.ecoPointsBalance),
+                                style: const TextStyle(color: GreenColors.accentGold, fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _incentiveSummary!.pccFrozen || _incentiveSummary!.redemptionsFrozen
+                            ? null
+                            : _showConvertPccDialog,
+                        icon: const Icon(Icons.currency_exchange_rounded, color: GreenColors.electricCyan, size: 18),
+                        label: Text(
+                          _incentiveSummary!.pccFrozen
+                              ? 'Ví Carbon đang bị đóng băng'
+                              : 'Quy đổi PCC → VNĐ (${GreenFormatters.currencyVnd(_incentiveSummary!.pccToVndRateVnd.toDouble())}/PCC)',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          side: const BorderSide(color: GreenColors.electricCyan),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                ChoiceChip(
+                  label: const Text('Biến động VNĐ'),
+                  selected: _historyTabIndex == 0,
+                  selectedColor: GreenColors.primaryEmerald,
+                  backgroundColor: GreenColors.surfaceDark,
+                  labelStyle: TextStyle(color: _historyTabIndex == 0 ? GreenColors.backgroundDark : Colors.white),
+                  onSelected: (_) => setState(() => _historyTabIndex = 0),
+                ),
+                const SizedBox(width: 8),
+                ChoiceChip(
+                  label: const Text('Sổ cái PCC & Điểm Xanh'),
+                  selected: _historyTabIndex == 1,
+                  selectedColor: GreenColors.primaryEmerald,
+                  backgroundColor: GreenColors.surfaceDark,
+                  labelStyle: TextStyle(color: _historyTabIndex == 1 ? GreenColors.backgroundDark : Colors.white),
+                  onSelected: (_) => setState(() => _historyTabIndex = 1),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (_historyTabIndex == 0)
+              ..._transactions.map(_buildVndTxRow)
+            else
+              ..._incentiveEntries.map(_buildIncentiveTxRow),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVndTxRow(WalletTransactionModel tx) {
+    final isIn = tx.isCredit;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: GreenColors.surfaceDark,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: GreenColors.cardBorder),
+      ),
+      child: Row(
+        children: [
+          Icon(isIn ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+              color: isIn ? GreenColors.primaryEmerald : GreenColors.errorRed, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(tx.description.isNotEmpty ? tx.description : tx.type,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                Text(tx.type, style: const TextStyle(color: GreenColors.textSecondary, fontSize: 11)),
+              ],
+            ),
+          ),
+          Text(
+            '${isIn ? '+' : '-'}${GreenFormatters.currencyVnd(tx.amountVnd.toDouble())}',
+            style: TextStyle(
+              color: isIn ? GreenColors.primaryEmerald : GreenColors.errorRed,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIncentiveTxRow(IncentiveLedgerEntryModel e) {
+    final isIn = e.isCredit;
+    final valStr = e.currency == 'PCC'
+        ? GreenFormatters.pcc(e.amount)
+        : GreenFormatters.ecoPoints(e.amount.round());
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: GreenColors.surfaceDark,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: GreenColors.cardBorder),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.eco_rounded, color: isIn ? GreenColors.primaryEmerald : GreenColors.accentGold, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(e.description.isNotEmpty ? e.description : e.transactionType,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                Text(e.currency, style: const TextStyle(color: GreenColors.textSecondary, fontSize: 11)),
+              ],
+            ),
+          ),
+          Text(
+            '${isIn ? '+' : '-'}$valStr',
+            style: TextStyle(
+              color: isIn ? GreenColors.primaryEmerald : GreenColors.accentGold,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

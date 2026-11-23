@@ -60,6 +60,15 @@ class AuthApi {
     throw Exception('Dữ liệu phản hồi đăng ký không hợp lệ');
   }
 
+  Future<UserProfile> getCurrentUser() async {
+    final response = await apiClient.dio.get('/auth/me');
+    final responseData = response.data;
+    if (responseData is Map<String, dynamic> && responseData['data'] != null) {
+      return UserProfile.fromJson(responseData['data'] as Map<String, dynamic>);
+    }
+    throw Exception('Không thể tải hồ sơ tài khoản');
+  }
+
   Future<void> logout() async {
     await apiClient.tokenStorage.clearSession();
   }

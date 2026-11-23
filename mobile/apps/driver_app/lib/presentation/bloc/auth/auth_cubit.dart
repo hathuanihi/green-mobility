@@ -1,3 +1,4 @@
+import 'package:core_model/core_model.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../data/repositories/auth_repository.dart';
 import 'auth_state.dart';
@@ -11,8 +12,17 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       final token = await authRepository.checkToken();
       if (token != null && token.isNotEmpty) {
-        // Session exists
-        emit(const Unauthenticated());
+        final profile = await authRepository.getCurrentUser();
+        emit(Authenticated(
+          AuthResponseModel(
+            userId: profile.id,
+            phoneNumber: profile.phoneNumber,
+            fullName: profile.fullName,
+            role: profile.role,
+            token: token,
+            expiresIn: 86400,
+          ),
+        ));
       } else {
         emit(const Unauthenticated());
       }

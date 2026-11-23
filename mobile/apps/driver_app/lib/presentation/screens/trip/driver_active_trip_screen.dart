@@ -7,6 +7,7 @@ import 'package:core_model/core_model.dart';
 import 'package:core_network/core_network.dart';
 import 'package:core_ui/core_ui.dart';
 import '../../../data/repositories/driver_repository.dart';
+import 'cash_collected_dialog.dart';
 
 class DriverActiveTripScreen extends StatefulWidget {
   final DriverTripModel initialTrip;
@@ -347,7 +348,23 @@ class _DriverActiveTripScreenState extends State<DriverActiveTripScreen> {
       });
       _stompService.disconnect();
       HapticFeedback.heavyImpact();
-      _showCompletionDialog(summary);
+      final finalAmount = summary.tripSummary?.finalAmountVnd ??
+          summary.driverEarnings?.grossAmountVnd ??
+          widget.initialTrip.netIncomeVnd;
+      final isCash = (summary.tripSummary?.paymentMethod ?? 'CASH').toUpperCase() == 'CASH' && finalAmount > 0;
+      if (isCash && mounted) {
+        final paymentApi = PaymentApi(apiClient: widget.driverRepository.driverApi.apiClient);
+        await CashCollectedDialog.show(
+          context,
+          tripId: widget.initialTrip.tripId,
+          amountVnd: finalAmount.round(),
+          customerName: summary.tripSummary?.customerName ?? 'Khách hàng',
+          paymentApi: paymentApi,
+          onConfirmed: () => _showCompletionDialog(summary),
+        );
+      } else {
+        _showCompletionDialog(summary);
+      }
     } catch (e) {
       _showErrorSnackBar('Lỗi hoàn thành chuyến: $e');
     } finally {

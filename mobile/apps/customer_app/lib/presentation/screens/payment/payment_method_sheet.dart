@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:core_model/core_model.dart';
 import 'package:core_ui/core_ui.dart';
+import 'package:flutter/material.dart';
 
 class PaymentMethodSheet extends StatelessWidget {
   final PaymentMethod selectedMethod;
@@ -41,8 +41,9 @@ class PaymentMethodSheet extends StatelessWidget {
 
     return Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: GreenColors.surfaceDark,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border(top: BorderSide(color: GreenColors.cardBorder)),
       ),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
       child: Column(
@@ -53,72 +54,57 @@ class PaymentMethodSheet extends StatelessWidget {
             child: Container(
               width: 40,
               height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
+              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
             ),
           ),
           const SizedBox(height: 16),
           const Text(
             'Chọn phương thức thanh toán',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
-            'Số tiền thanh toán: ${requiredAmount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')} đ',
-            style: const TextStyle(fontSize: 14, color: Colors.grey),
+            'Số tiền thanh toán: ${GreenFormatters.currencyVnd(requiredAmount.toDouble())}',
+            style: const TextStyle(fontSize: 14, color: GreenColors.textSecondary),
           ),
           const SizedBox(height: 16),
-
-          // 1. Green Wallet
           _buildMethodItem(
             context,
             method: PaymentMethod.greenWallet,
             title: 'Ví Xanh (Green Wallet)',
             subtitle: walletBalance != null
-                ? 'Số dư: ${walletBalance.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')} đ ${hasEnoughWallet ? '' : '(Không đủ số dư)'}'
+                ? 'Số dư: ${GreenFormatters.currencyVnd(walletBalance!.toDouble())} ${hasEnoughWallet ? '' : '(Không đủ)'}'
                 : 'Thanh toán tức thì không phí',
             icon: Icons.account_balance_wallet_rounded,
-            iconColor: const Color(0xFF10B981),
+            iconColor: GreenColors.primaryEmerald,
             isDisabled: !hasEnoughWallet && walletBalance != null,
           ),
           const SizedBox(height: 12),
-
-          // 2. VNPay
           _buildMethodItem(
             context,
             method: PaymentMethod.vnpay,
-            title: 'VNPay',
-            subtitle: 'Thẻ ATM nội địa, Thẻ quốc tế, VNPay-QR',
+            title: 'VNPay QR / Thẻ ATM',
+            subtitle: 'Thẻ ATM nội địa, Quốc tế, QR',
             icon: Icons.credit_card_rounded,
-            iconColor: const Color(0xFF005BAA),
+            iconColor: GreenColors.electricCyan,
           ),
           const SizedBox(height: 12),
-
-          // 3. MoMo
           _buildMethodItem(
             context,
             method: PaymentMethod.momo,
             title: 'Ví MoMo',
-            subtitle: 'Thanh toán qua ứng dụng MoMo',
-            icon: Icons.phone_android_rounded,
-            iconColor: const Color(0xFFA50064),
+            subtitle: 'Thanh toán nhanh qua ví điện tử',
+            icon: Icons.qr_code_scanner_rounded,
+            iconColor: const Color(0xFFF472B6),
           ),
           const SizedBox(height: 12),
-
-          // 4. Cash
           _buildMethodItem(
             context,
             method: PaymentMethod.cash,
-            title: 'Tiền mặt (CASH)',
-            subtitle: 'Thanh toán trực tiếp cho tài xế khi kết thúc',
+            title: 'Tiền mặt',
+            subtitle: 'Thanh toán trực tiếp cho tài xế',
             icon: Icons.payments_rounded,
-            iconColor: const Color(0xFF059669),
+            iconColor: GreenColors.accentGold,
           ),
         ],
       ),
@@ -135,65 +121,38 @@ class PaymentMethodSheet extends StatelessWidget {
     bool isDisabled = false,
   }) {
     final isSelected = selectedMethod == method;
-
-    return InkWell(
+    return GestureDetector(
       onTap: isDisabled ? null : () => onSelect(method),
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected
-                ? const Color(0xFF10B981)
-                : (isDisabled ? Colors.grey.shade200 : Colors.grey.shade300),
-            width: isSelected ? 2 : 1,
+      child: Opacity(
+        opacity: isDisabled ? 0.45 : 1.0,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: isSelected ? GreenColors.primaryEmerald.withValues(alpha: 0.14) : GreenColors.cardDark,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isSelected ? GreenColors.primaryEmerald : GreenColors.cardBorder,
+            ),
           ),
-          color: isSelected
-              ? const Color(0xFF10B981).withOpacity(0.05)
-              : (isDisabled ? Colors.grey.shade50 : Colors.white),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(12),
+          child: Row(
+            children: [
+              Icon(icon, color: iconColor, size: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                    Text(subtitle, style: const TextStyle(color: GreenColors.textSecondary, fontSize: 12)),
+                  ],
+                ),
               ),
-              child: Icon(icon, color: iconColor, size: 24),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: isDisabled ? Colors.grey : Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDisabled ? Colors.red.shade400 : Colors.grey.shade600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (isSelected)
-              const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 22),
-          ],
+              if (isSelected)
+                const Icon(Icons.check_circle_rounded, color: GreenColors.primaryEmerald),
+            ],
+          ),
         ),
       ),
     );
   }
 }
-

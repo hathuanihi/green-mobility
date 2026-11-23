@@ -7,6 +7,8 @@ import 'package:core_model/core_model.dart';
 import 'package:core_network/core_network.dart';
 import 'package:core_ui/core_ui.dart';
 import '../../../data/repositories/trip_repository.dart';
+import '../payment/impact_receipt_screen.dart';
+import '../payment/payment_screen.dart';
 
 class CustomerActiveTripScreen extends StatefulWidget {
   final TripModel trip;
@@ -204,7 +206,7 @@ class _CustomerActiveTripScreenState extends State<CustomerActiveTripScreen>
       setState(() => _showArrivedBanner = false);
     } else if (newStatus == TripStatus.completed) {
       HapticFeedback.heavyImpact();
-      _showCompletionDialog();
+      _handleTripCompletedNavigation();
     } else if (newStatus == TripStatus.cancelled) {
       _showCancellationDialog(message ?? 'Chuyến đi đã bị hủy');
     }
@@ -293,401 +295,49 @@ class _CustomerActiveTripScreenState extends State<CustomerActiveTripScreen>
     );
   }
 
-  void _showCompletionDialog() {
-    int ratingStars = 5;
-    final Set<String> selectedCompliments = {'Lái xe an toàn', 'Xe sạch sẽ'};
-    final double co2 = widget.trip.co2SavedGrams > 0 ? widget.trip.co2SavedGrams : 506.52;
-    final double treeDays = co2 / 60.0;
-    final double ledHours = co2 / 7.221;
-    final double phoneCharges = co2 / 8.22;
-    final double pcc = co2 / 1000000.0;
-    final int ecoPoints = (co2 / 100.0).floor();
-    final String shortId = widget.trip.tripId.length >= 6 ? widget.trip.tripId.substring(0, 6) : widget.trip.tripId;
-    final String shareSlug = 'eco-${widget.trip.tripCode.toLowerCase()}-$shortId';
+  void _handleTripCompletedNavigation() {
+    final apiClient = widget.tripRepository.tripApi.apiClient;
+    final paymentApi = PaymentApi(apiClient: apiClient);
+    final carbonApi = CarbonApi(apiClient: apiClient);
 
-    showModalBottomSheet(
-      context: context,
-      isDismissible: false,
-      enableDrag: false,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setSheetState) {
-          return ConfettiCelebration(
-            isPlaying: true,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              decoration: const BoxDecoration(
-                color: GreenColors.backgroundDark,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-                border: Border(top: BorderSide(color: GreenColors.primaryEmerald, width: 2)),
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: Colors.white24,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
+    final method = PaymentMethod.fromString(widget.trip.paymentMethod);
+    final needsCheckout = widget.trip.paymentStatus != 'PAID' &&
+        widget.trip.finalAmountVnd > 0 &&
+        method != PaymentMethod.cash;
 
-                    // Certificate Badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: GreenColors.primaryEmerald.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: GreenColors.primaryEmerald.withValues(alpha: 0.4)),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.verified, color: GreenColors.primaryEmerald, size: 15),
-                          SizedBox(width: 6),
-                          Text(
-                            'CHỨNG NHẬN TÁC ĐỘNG XANH (IPCC)',
-                            style: TextStyle(
-                              color: GreenColors.primaryEmerald,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-
-                    const Text(
-                      'HÓA ĐƠN TÁC ĐỘNG XANH',
-                      style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900, color: Colors.white),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Chuyến #${widget.trip.tripCode.isNotEmpty ? widget.trip.tripCode : "GM-TRIP"} • Không phát thải trực tiếp',
-                      style: const TextStyle(fontSize: 12, color: Colors.white60),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Main CO2 Savings Hero Card
-                    Container(
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            GreenColors.primaryDark.withValues(alpha: 0.6),
-                            GreenColors.surfaceDark,
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: GreenColors.primaryEmerald.withValues(alpha: 0.35)),
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('LƯỢNG CO2 ĐÃ CẮT GIẢM', style: TextStyle(fontSize: 10, color: Colors.white54, fontWeight: FontWeight.w600)),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                                    textBaseline: TextBaseline.alphabetic,
-                                    children: [
-                                      Text(
-                                        '-${co2.toStringAsFixed(1)}',
-                                        style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: GreenColors.primaryEmerald),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      const Text('g CO2', style: TextStyle(fontSize: 14, color: Colors.white70, fontWeight: FontWeight.bold)),
-                                    ],
-                                  ),
-                                  Text(
-                                    '≈ ${(co2 / 1000).toStringAsFixed(3)} kg CO2 giảm cho môi trường',
-                                    style: const TextStyle(fontSize: 11, color: Colors.white54),
-                                  ),
-                                ],
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: GreenColors.electricCyan.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(color: GreenColors.electricCyan.withValues(alpha: 0.3)),
-                                ),
-                                child: Column(
-                                  children: [
-                                    const Text('Tín chỉ PCC', style: TextStyle(fontSize: 9, color: Colors.white54)),
-                                    Text(
-                                      '+${pcc.toStringAsFixed(4)}',
-                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: GreenColors.electricCyan),
-                                    ),
-                                    Text(
-                                      '+$ecoPoints Điểm',
-                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: GreenColors.accentGold),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-
-                          // Comparison bar
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text('So sánh phát thải theo IPCC:', style: TextStyle(fontSize: 10, color: Colors.white60)),
-                                  Text(
-                                    'Giảm ${(co2 / (co2 * 1.6) * 100).toStringAsFixed(0)}% khí thải',
-                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: GreenColors.primaryEmerald),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Stack(
-                                children: [
-                                  Container(
-                                    height: 8,
-                                    width: double.infinity,
-                                    decoration: BoxDecoration(
-                                      color: Colors.redAccent.withValues(alpha: 0.3),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                  ),
-                                  FractionallySizedBox(
-                                    widthFactor: 0.25,
-                                    child: Container(
-                                      height: 8,
-                                      decoration: BoxDecoration(
-                                        color: GreenColors.primaryEmerald,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              const Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text('🟢 Xe điện Green Mobility', style: TextStyle(fontSize: 9, color: GreenColors.primaryEmerald)),
-                                  Text('🔴 Xe xăng truyền thống', style: TextStyle(fontSize: 9, color: Colors.redAccent)),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // 3 Ecological Equivalents
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-                            decoration: BoxDecoration(
-                              color: GreenColors.cardDark,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: GreenColors.cardBorder),
-                            ),
-                            child: Column(
-                              children: [
-                                const Icon(Icons.forest_rounded, color: GreenColors.primaryEmerald, size: 20),
-                                const SizedBox(height: 2),
-                                Text(
-                                  treeDays.toStringAsFixed(1),
-                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white),
-                                ),
-                                const Text('Ngày cây hấp thụ', style: TextStyle(fontSize: 9, color: Colors.white54)),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-                            decoration: BoxDecoration(
-                              color: GreenColors.cardDark,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: GreenColors.cardBorder),
-                            ),
-                            child: Column(
-                              children: [
-                                const Icon(Icons.lightbulb_rounded, color: GreenColors.accentGold, size: 20),
-                                const SizedBox(height: 2),
-                                Text(
-                                  ledHours.toStringAsFixed(0),
-                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white),
-                                ),
-                                const Text('Giờ đèn LED 10W', style: TextStyle(fontSize: 9, color: Colors.white54)),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-                            decoration: BoxDecoration(
-                              color: GreenColors.cardDark,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: GreenColors.cardBorder),
-                            ),
-                            child: Column(
-                              children: [
-                                const Icon(Icons.battery_charging_full_rounded, color: GreenColors.electricCyan, size: 20),
-                                const SizedBox(height: 2),
-                                Text(
-                                  phoneCharges.toStringAsFixed(0),
-                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white),
-                                ),
-                                const Text('Lần sạc pin ĐT', style: TextStyle(fontSize: 9, color: Colors.white54)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Fare Card
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: GreenColors.cardDark,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: GreenColors.cardBorder),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Cước phí chuyến đi:', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                          Text(
-                            GreenFormatters.currencyVnd(widget.trip.finalAmountVnd),
-                            style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 16),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Share Certificate Button
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        Clipboard.setData(ClipboardData(text: 'https://greenmobility.vn/eco/certificate/$shareSlug'));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            backgroundColor: GreenColors.surfaceDark,
-                            content: Text('Đã sao chép liên kết chứng nhận: eco/certificate/$shareSlug'),
-                            duration: const Duration(seconds: 3),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.share_rounded, color: GreenColors.electricCyan, size: 16),
-                      label: const Text(
-                        'CHIA SẺ CHỨNG NHẬN TÁC ĐỘNG XANH',
-                        style: TextStyle(color: GreenColors.electricCyan, fontSize: 11, fontWeight: FontWeight.bold),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: GreenColors.electricCyan, width: 1.2),
-                        minimumSize: const Size.fromHeight(42),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // 5-Star Driver Rating
-                    const Text(
-                      'ĐÁNH GIÁ CHUYẾN ĐI',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: Colors.white60),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(5, (index) {
-                        final star = index + 1;
-                        return IconButton(
-                          icon: Icon(
-                            star <= ratingStars ? Icons.star_rounded : Icons.star_outline_rounded,
-                            color: GreenColors.accentGold,
-                            size: 34,
-                          ),
-                          onPressed: () {
-                            setSheetState(() => ratingStars = star);
-                          },
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 6),
-
-                    // Compliment Tags
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        'Lái xe an toàn',
-                        'Xe sạch sẽ',
-                        'Thân thiện',
-                        'Đúng giờ',
-                        'Nhiệt tình hỗ trợ',
-                      ].map((tag) {
-                        final isSelected = selectedCompliments.contains(tag);
-                        return FilterChip(
-                          label: Text(tag, style: TextStyle(color: isSelected ? GreenColors.primaryEmerald : Colors.white70, fontSize: 10)),
-                          selected: isSelected,
-                          selectedColor: GreenColors.primaryEmerald.withValues(alpha: 0.2),
-                          backgroundColor: GreenColors.cardDark,
-                          checkmarkColor: GreenColors.primaryEmerald,
-                          side: BorderSide(color: isSelected ? GreenColors.primaryEmerald : GreenColors.cardBorder),
-                          onSelected: (selected) {
-                            setSheetState(() {
-                              if (selected) {
-                                selectedCompliments.add(tag);
-                              } else {
-                                selectedCompliments.remove(tag);
-                              }
-                            });
-                          },
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 18),
-
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(ctx).pop();
-                        Navigator.of(context).pop();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: GreenColors.primaryEmerald,
-                        foregroundColor: GreenColors.backgroundDark,
-                        minimumSize: const Size.fromHeight(48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
-                      child: const Text('HOÀN TẤT & VỀ TRANG CHỦ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                    ),
-                  ],
+    if (needsCheckout) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => PaymentScreen(
+            tripId: widget.trip.tripId,
+            amountVnd: widget.trip.finalAmountVnd.round(),
+            initialMethod: method,
+            paymentApi: paymentApi,
+            onPaymentSuccess: () {
+              if (!mounted) return;
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (_) => ImpactReceiptScreen(
+                    tripId: widget.trip.tripId,
+                    carbonApi: carbonApi,
+                    onDone: () => Navigator.of(context).pop(),
+                  ),
                 ),
-              ),
-            ),
-          );
-        },
+              );
+            },
+          ),
+        ),
+      );
+      return;
+    }
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => ImpactReceiptScreen(
+          tripId: widget.trip.tripId,
+          carbonApi: carbonApi,
+          onDone: () => Navigator.of(context).pop(),
+        ),
       ),
     );
   }
