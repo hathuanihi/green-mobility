@@ -69,13 +69,16 @@ export default function LedgerAuditPage() {
         apiClient.get<ApiResponse<{ content: TripAwardItem[] }>>(
           `/admin/incentive/awards?size=30${awardParam}`
         ),
-        apiClient.get<ApiResponse<{ content: OutboxFailedItem[] }>>("/admin/outbox/failed?size=30"),
+        apiClient.get<ApiResponse<OutboxFailedItem[] | { content: OutboxFailedItem[] }>>("/admin/outbox/failed"),
       ]);
 
       if (auditRes.data.success) setAudit(auditRes.data.data);
       if (txRes.data.success && txRes.data.data?.content) setTxs(txRes.data.data.content);
       if (awardRes.data.success && awardRes.data.data?.content) setAwards(awardRes.data.data.content);
-      if (outboxRes.data.success && outboxRes.data.data?.content) setOutboxFailed(outboxRes.data.data.content);
+      if (outboxRes.data.success && outboxRes.data.data) {
+        const rawOutbox = outboxRes.data.data;
+        setOutboxFailed(Array.isArray(rawOutbox) ? rawOutbox : rawOutbox.content ?? []);
+      }
     } catch (err: any) {
       showToast("Không thể tải dữ liệu kiểm toán: " + (err.response?.data?.message || err.message), "error");
     } finally {
@@ -224,7 +227,8 @@ export default function LedgerAuditPage() {
       {/* 3-Currency Zero-Sum Audit Banner */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {currencies.map((ccy) => {
-          const delta = Number(audit?.systemTotalsByCurrency?.[ccy] ?? 0);
+          const totalsMap = audit?.totalsByCurrency ?? audit?.systemTotalsByCurrency;
+          const delta = Number(totalsMap?.[ccy] ?? 0);
           const ok = Math.abs(delta) < 0.0001;
           return (
             <div
@@ -264,7 +268,9 @@ export default function LedgerAuditPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400">Drift tài khoản:</span>
-              <span className="font-mono text-white">{audit?.accountDriftsCount ?? 0}</span>
+              <span className="font-mono text-white">
+                {audit?.accountDiscrepanciesCount ?? audit?.accountDriftsCount ?? 0}
+              </span>
             </div>
           </div>
         </div>
@@ -352,7 +358,9 @@ export default function LedgerAuditPage() {
                       <td className="px-4 py-3 font-mono text-emerald-400">{t.transactionCode}</td>
                       <td className="px-4 py-3 font-mono">{t.transactionType}</td>
                       <td className="px-4 py-3 font-bold">{t.currency}</td>
-                      <td className="px-4 py-3 text-right font-mono">{Number(t.totalDebit).toLocaleString("vi-VN")}</td>
+                      <td className="px-4 py-3 text-right font-mono">
+                        {Number(t.totalAmount ?? t.totalDebit ?? 0).toLocaleString("vi-VN")}
+                      </td>
                       <td className="px-4 py-3 text-slate-400 max-w-xs truncate">{t.description}</td>
                       <td className="px-4 py-3 text-right">
                         <div className="inline-flex items-center gap-2">
@@ -487,7 +495,7 @@ export default function LedgerAuditPage() {
                       <td className="px-4 py-3 font-mono">
                         {o.aggregateType}:{o.aggregateId.substring(0, 8)}
                       </td>
-                      <td className="px-4 py-3 font-mono">{o.retryCount}</td>
+                      <td className="px-4 py-3 font-mono">{o.attempts ?? o.retryCount ?? 0}</td>
                       <td className="px-4 py-3 text-red-400 max-w-sm truncate">{o.lastError || "-"}</td>
                       <td className="px-4 py-3 text-right">
                         {!isReadOnly && (

@@ -428,11 +428,14 @@ export interface TripAwardItem {
 }
 
 export interface MultiCurrencyAuditReport {
-  balanced: boolean;
-  systemTotalsByCurrency: Record<string, number>;
+  isBalanced?: boolean;
+  balanced?: boolean;
+  totalsByCurrency?: Record<string, number>;
+  systemTotalsByCurrency?: Record<string, number>;
   unbalancedTransactionsCount: number;
   crossCurrencyTransactionsCount: number;
-  accountDriftsCount: number;
+  accountDiscrepanciesCount?: number;
+  accountDriftsCount?: number;
   discrepancies: string[];
   redemptionsFrozen: boolean;
   checkedAt: string;
@@ -444,7 +447,8 @@ export interface LedgerTransactionItem {
   tripId?: string;
   transactionType: string;
   currency: string;
-  totalDebit: number;
+  totalAmount?: number;
+  totalDebit?: number;
   description?: string;
   referenceType?: string;
   referenceId?: string;
@@ -471,7 +475,8 @@ export interface OutboxFailedItem {
   aggregateId: string;
   routingKey: string;
   status: string;
-  retryCount: number;
+  attempts?: number;
+  retryCount?: number;
   lastError?: string;
   createdAt: string;
 }
