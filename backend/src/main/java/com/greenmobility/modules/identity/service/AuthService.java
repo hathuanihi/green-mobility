@@ -10,7 +10,10 @@ import com.greenmobility.modules.identity.dto.RegisterRequest;
 import com.greenmobility.modules.identity.dto.UserResponse;
 import com.greenmobility.modules.identity.entity.Role;
 import com.greenmobility.modules.identity.entity.User;
+import com.greenmobility.modules.identity.entity.UserStatus;
 import com.greenmobility.modules.identity.repository.UserRepository;
+import com.greenmobility.modules.ledger.api.LedgerModuleApi;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -25,15 +28,26 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
     private final DriverPublicService driverPublicService;
+    private final LedgerModuleApi ledgerModuleApi;
 
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        JwtTokenProvider tokenProvider,
                        DriverPublicService driverPublicService) {
+        this(userRepository, passwordEncoder, tokenProvider, driverPublicService, null);
+    }
+
+    @Autowired
+    public AuthService(UserRepository userRepository,
+                       PasswordEncoder passwordEncoder,
+                       JwtTokenProvider tokenProvider,
+                       DriverPublicService driverPublicService,
+                       @Autowired(required = false) LedgerModuleApi ledgerModuleApi) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenProvider = tokenProvider;
         this.driverPublicService = driverPublicService;
+        this.ledgerModuleApi = ledgerModuleApi;
     }
 
     @Transactional
@@ -59,6 +73,10 @@ public class AuthService {
         );
 
         User savedUser = userRepository.save(user);
+        if (ledgerModuleApi != null) {
+            ledgerModuleApi.provisionUserWallets(savedUser.getId(), savedUser.getRole() == Role.ROLE_DRIVER);
+        }
+
         String token = tokenProvider.generateToken(savedUser.getId(), savedUser.getPhoneNumber(), savedUser.getRole().name());
         String refreshToken = tokenProvider.generateRefreshToken(savedUser.getId(), savedUser.getPhoneNumber());
 
@@ -81,6 +99,10 @@ public class AuthService {
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new BadCredentialsException("Số điện thoại hoặc mật khẩu không chính xác");
+        }
+
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new BadRequestException("Tài khoản người dùng đã bị khóa hoặc tạm ngưng");
         }
 
         String token = tokenProvider.generateToken(user.getId(), user.getPhoneNumber(), user.getRole().name());
@@ -113,7 +135,7 @@ public class AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Người dùng không tồn tại"));
 
-        if (user.getStatus() != com.greenmobility.modules.identity.entity.UserStatus.ACTIVE) {
+        if (user.getStatus() != UserStatus.ACTIVE) {
             throw new BadRequestException("Tài khoản người dùng đã bị khóa");
         }
 

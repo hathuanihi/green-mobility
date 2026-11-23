@@ -7,14 +7,25 @@ import java.util.UUID;
 
 public class AdminFinanceDtos {
 
+    public record DailyRevenuePoint(
+            String date,
+            long gmv,
+            long commission,
+            long driverPayout
+    ) {}
+
     public record FinanceOverviewResponse(
             long totalGmvVnd,
             long totalCommissionVnd,
             double successRate,
             long gatewayClearingVnd,
             long payoutClearingVnd,
+            long totalWalletBalanceVnd,
+            long activeDriversCount,
             Map<String, Long> paymentsByMethod,
-            Map<String, Long> paymentsByStatus
+            Map<String, Long> methodAmountsVnd,
+            Map<String, Long> paymentsByStatus,
+            List<DailyRevenuePoint> revenueByDay
     ) {}
 
     public record ReconciliationResponse(
@@ -59,4 +70,3 @@ public class AdminFinanceDtos {
             Instant receivedAt
     ) {}
 }
-

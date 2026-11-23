@@ -10,6 +10,7 @@ import com.greenmobility.modules.trip.repository.TripRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -48,6 +49,17 @@ public class TripModuleApiImpl implements TripModuleApi {
                 .orElse(null);
     }
 
+    @Override
+    @Transactional
+    public void recordTripCarbonImpact(UUID tripId, BigDecimal co2SavedGrams, BigDecimal pccCredits, int ecoPoints) {
+        tripRepository.findById(tripId).ifPresent(trip -> {
+            trip.setCo2SavedGrams(co2SavedGrams);
+            trip.setCarbonCreditsEarned(pccCredits);
+            trip.setLoyaltyPointsEarned(ecoPoints);
+            tripRepository.save(trip);
+        });
+    }
+
     private TripSnapshotDto mapToSnapshot(Trip trip) {
         UUID driverUserId = null;
         if (trip.getDriverId() != null) {
@@ -62,11 +74,16 @@ public class TripModuleApiImpl implements TripModuleApi {
                 trip.getCustomerId(),
                 trip.getDriverId(),
                 driverUserId,
+                trip.getFareAmount(),
+                trip.getDiscountAmount() != null ? trip.getDiscountAmount() : BigDecimal.ZERO,
                 trip.getFinalAmount(),
                 trip.getPaymentMethod() != null ? trip.getPaymentMethod().name() : "CASH",
                 trip.getPaymentStatus(),
-                trip.getStatus()
+                trip.getStatus(),
+                trip.getVehicleType() != null ? trip.getVehicleType().name() : "ELECTRIC_MOTORBIKE",
+                trip.getActualDistanceM(),
+                trip.getEstimatedDistanceM(),
+                trip.getCompletedAt()
         );
     }
 }
-

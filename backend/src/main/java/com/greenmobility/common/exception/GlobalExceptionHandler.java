@@ -78,9 +78,14 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Mã định danh không đúng định dạng UUID hợp lệ: " + ex.getValue()));
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(ex.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneralException(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("Đã xảy ra lỗi nội bộ hệ thống: " + ex.getMessage()));
+                .body(ApiResponse.error("Đã xảy ra lỗi nội bộ hệ thống. Vui lòng thử lại sau."));
     }
 }

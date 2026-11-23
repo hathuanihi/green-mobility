@@ -31,6 +31,12 @@ public class Payment {
     @Column(name = "amount_vnd", nullable = false)
     private Long amountVnd;
 
+    @Column(name = "gross_fare_vnd")
+    private Long grossFareVnd;
+
+    @Column(name = "discount_vnd", nullable = false)
+    private Long discountVnd = 0L;
+
     @Column(name = "commission_rate", precision = 5, scale = 4)
     private BigDecimal commissionRate;
 
@@ -99,6 +105,12 @@ public class Payment {
 
     public Long getAmountVnd() { return amountVnd; }
     public void setAmountVnd(Long amountVnd) { this.amountVnd = amountVnd; }
+
+    public Long getGrossFareVnd() { return grossFareVnd; }
+    public void setGrossFareVnd(Long grossFareVnd) { this.grossFareVnd = grossFareVnd; }
+
+    public Long getDiscountVnd() { return discountVnd; }
+    public void setDiscountVnd(Long discountVnd) { this.discountVnd = discountVnd; }
 
     public BigDecimal getCommissionRate() { return commissionRate; }
     public void setCommissionRate(BigDecimal commissionRate) { this.commissionRate = commissionRate; }

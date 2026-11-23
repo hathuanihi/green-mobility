@@ -18,9 +18,9 @@ class CarbonEstimateServiceTest {
     @BeforeEach
     void setUp() {
         carbonService = new CarbonEstimateService();
-        ReflectionTestUtils.setField(carbonService, "gridEmissionFactorGco2Kwh", 722.1);
+        ReflectionTestUtils.setField(carbonService, "gridEmissionFactorGco2Kwh", 618.7);
         ReflectionTestUtils.setField(carbonService, "treeAbsorptionDailyKg", 0.06);
-        ReflectionTestUtils.setField(carbonService, "ledBulbHourlyGco2", 7.221);
+        ReflectionTestUtils.setField(carbonService, "ledBulbHourlyGco2", 6.187);
     }
 
     @Test
@@ -29,8 +29,8 @@ class CarbonEstimateServiceTest {
         CarbonEstimateDto estimate = carbonService.estimateCarbon(VehicleType.ELECTRIC_MOTORBIKE, 16.2);
 
         assertNotNull(estimate);
-        // Baseline ~ 1109.7g, EV ~ 292.4g, Saved ~ 817.3g
-        assertTrue(estimate.getCo2SavedGrams().doubleValue() > 800.0);
+        // Baseline 68.5*16.2=1109.7g, EV 19.80*16.2=320.76g, Saved=788.94g
+        assertTrue(estimate.getCo2SavedGrams().doubleValue() > 750.0);
         assertTrue(estimate.getTreeAbsorptionDays() > 13.0);
         assertTrue(estimate.getLedBulbHours() > 100.0);
         assertTrue(estimate.getBaselineGasolineGrams().doubleValue() > 1100.0);

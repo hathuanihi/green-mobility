@@ -1,5 +1,6 @@
 package com.greenmobility.modules.fraud.controller;
 
+import com.greenmobility.common.exception.ResourceNotFoundException;
 import com.greenmobility.common.response.ApiResponse;
 import com.greenmobility.modules.drivervehicle.entity.DriverProfile;
 import com.greenmobility.modules.drivervehicle.entity.Vehicle;
@@ -139,11 +140,12 @@ public class AdminFraudController {
 
     @Operation(summary = "Xử lý / Giải quyết cảnh báo gian lận")
     @PatchMapping("/alerts/{id}/resolve")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_FINANCE')")
     public ResponseEntity<ApiResponse<FraudAlertDto>> resolveAlert(
             @PathVariable UUID id,
             @RequestParam String status) {
         FraudAlert alert = fraudAlertRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy cảnh báo với ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cảnh báo với ID: " + id));
 
         alert.setResolutionStatus(status.toUpperCase());
         alert.setResolvedAt(Instant.now());

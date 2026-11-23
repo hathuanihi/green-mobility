@@ -11,8 +11,6 @@ import com.greenmobility.modules.payment.repository.TopupRequestRepository;
 import com.greenmobility.modules.payment.service.PaymentService;
 import com.greenmobility.modules.payment.service.TopupService;
 import jakarta.servlet.http.HttpServletRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -26,8 +24,6 @@ import java.util.UUID;
 @RestController
 @RequestMapping
 public class GatewayCallbackController {
-
-    private static final Logger log = LoggerFactory.getLogger(GatewayCallbackController.class);
 
     private final VnPayGateway vnPayGateway;
     private final MomoGateway momoGateway;
@@ -59,9 +55,6 @@ public class GatewayCallbackController {
         this.objectMapper = objectMapper;
     }
 
-    /**
-     * VNPay Server-to-Server IPN (Public endpoint, strictly verified).
-     */
     @GetMapping(value = "/payments/vnpay/ipn", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, String> handleVnPayIpn(@RequestParam Map<String, String> params, HttpServletRequest request) {
         String clientIp = getClientIp(request);
@@ -83,7 +76,6 @@ public class GatewayCallbackController {
             return Map.of("RspCode", "01", "Message", "Order not found");
         }
 
-        // Check if topup or trip payment
         if (txnRef.startsWith("TOPUP")) {
             Optional<TopupRequest> topupOpt = topupRepository.findByGatewayTxnRef(txnRef);
             if (topupOpt.isEmpty()) {
@@ -102,17 +94,14 @@ public class GatewayCallbackController {
 
             if (result.isSuccess()) {
                 topupService.settleTopup(txnRef, result.gatewayTransactionNo());
-                recordWebhook("VNPAY", txnRef, payloadJson, true, "APPLIED", clientIp);
-                return Map.of("RspCode", "00", "Message", "Confirm Success");
             } else {
                 topup.setStatus("FAILED");
                 topupRepository.save(topup);
-                recordWebhook("VNPAY", txnRef, payloadJson, true, "APPLIED", clientIp);
-                return Map.of("RspCode", "00", "Message", "Confirm Success");
             }
+            recordWebhook("VNPAY", txnRef, payloadJson, true, "APPLIED", clientIp);
+            return Map.of("RspCode", "00", "Message", "Confirm Success");
         }
 
-        // Trip payment
         Optional<Payment> paymentOpt = paymentRepository.findByGatewayAndGatewayTxnRef("VNPAY", txnRef);
         if (paymentOpt.isEmpty()) {
             recordWebhook("VNPAY", txnRef, payloadJson, true, "UNKNOWN_ORDER", clientIp);
@@ -132,21 +121,16 @@ public class GatewayCallbackController {
 
         if (result.isSuccess()) {
             paymentService.settle(payment.getId(), "VNPAY_IPN", result.gatewayTransactionNo());
-            recordWebhook("VNPAY", txnRef, payloadJson, true, "APPLIED", clientIp);
-            return Map.of("RspCode", "00", "Message", "Confirm Success");
         } else {
             payment.setStatus("FAILED");
             payment.setFailureCode(result.responseCode());
             payment.setFailureMessage(result.message());
             paymentRepository.save(payment);
-            recordWebhook("VNPAY", txnRef, payloadJson, true, "APPLIED", clientIp);
-            return Map.of("RspCode", "00", "Message", "Confirm Success");
         }
+        recordWebhook("VNPAY", txnRef, payloadJson, true, "APPLIED", clientIp);
+        return Map.of("RspCode", "00", "Message", "Confirm Success");
     }
 
-    /**
-     * VNPay Return URL (Does NOT change state; redirects 302 to mobile deep link or web return).
-     */
     @GetMapping("/payments/vnpay/return")
     public ResponseEntity<Void> handleVnPayReturn(@RequestParam Map<String, String> params) {
         String txnRef = params.get("vnp_TxnRef");
@@ -167,9 +151,6 @@ public class GatewayCallbackController {
         return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(deepLink)).build();
     }
 
-    /**
-     * MoMo Server-to-Server IPN.
-     */
     @PostMapping(value = "/payments/momo/ipn", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Void> handleMomoIpn(@RequestBody String rawBody, HttpServletRequest request) {
         String clientIp = getClientIp(request);
@@ -181,29 +162,64 @@ public class GatewayCallbackController {
         }
 
         String txnRef = result.gatewayTxnRef();
-        if (txnRef != null) {
-            if (txnRef.startsWith("TOPUP")) {
-                topupRepository.findByGatewayTxnRef(txnRef).ifPresent(topup -> {
-                    if (result.isSuccess() && !"PAID".equals(topup.getStatus())) {
-                        topupService.settleTopup(txnRef, result.gatewayTransactionNo());
-                    }
-                });
-            } else {
-                paymentRepository.findByGatewayAndGatewayTxnRef("MOMO", txnRef).ifPresent(payment -> {
-                    if (result.isSuccess() && !"PAID".equals(payment.getStatus())) {
-                        paymentService.settle(payment.getId(), "MOMO_IPN", result.gatewayTransactionNo());
-                    }
-                });
-            }
+        if (txnRef == null) {
+            recordWebhook("MOMO", null, rawBody, true, "UNKNOWN_ORDER", clientIp);
+            return ResponseEntity.noContent().build();
         }
 
+        if (txnRef.startsWith("TOPUP")) {
+            Optional<TopupRequest> topupOpt = topupRepository.findByGatewayTxnRef(txnRef);
+            if (topupOpt.isEmpty()) {
+                recordWebhook("MOMO", txnRef, rawBody, true, "UNKNOWN_ORDER", clientIp);
+                return ResponseEntity.noContent().build();
+            }
+            TopupRequest topup = topupOpt.get();
+            if (topup.getAmountVnd() != result.amountVnd()) {
+                recordWebhook("MOMO", txnRef, rawBody, true, "REJECTED_AMOUNT", clientIp);
+                return ResponseEntity.noContent().build();
+            }
+            if ("PAID".equals(topup.getStatus())) {
+                recordWebhook("MOMO", txnRef, rawBody, true, "DUPLICATE", clientIp);
+                return ResponseEntity.noContent().build();
+            }
+            if (result.isSuccess()) {
+                topupService.settleTopup(txnRef, result.gatewayTransactionNo());
+            } else {
+                topup.setStatus("FAILED");
+                topupRepository.save(topup);
+            }
+            recordWebhook("MOMO", txnRef, rawBody, true, "APPLIED", clientIp);
+            return ResponseEntity.noContent().build();
+        }
+
+        Optional<Payment> paymentOpt = paymentRepository.findByGatewayAndGatewayTxnRef("MOMO", txnRef);
+        if (paymentOpt.isEmpty()) {
+            recordWebhook("MOMO", txnRef, rawBody, true, "UNKNOWN_ORDER", clientIp);
+            return ResponseEntity.noContent().build();
+        }
+
+        Payment payment = paymentOpt.get();
+        if (payment.getAmountVnd() != result.amountVnd()) {
+            recordWebhook("MOMO", txnRef, rawBody, true, "REJECTED_AMOUNT", clientIp);
+            return ResponseEntity.noContent().build();
+        }
+        if ("PAID".equals(payment.getStatus())) {
+            recordWebhook("MOMO", txnRef, rawBody, true, "DUPLICATE", clientIp);
+            return ResponseEntity.noContent().build();
+        }
+
+        if (result.isSuccess()) {
+            paymentService.settle(payment.getId(), "MOMO_IPN", result.gatewayTransactionNo());
+        } else {
+            payment.setStatus("FAILED");
+            payment.setFailureCode(result.responseCode());
+            payment.setFailureMessage(result.message());
+            paymentRepository.save(payment);
+        }
         recordWebhook("MOMO", txnRef, rawBody, true, "APPLIED", clientIp);
         return ResponseEntity.noContent().build();
     }
 
-    /**
-     * MoMo Return URL.
-     */
     @GetMapping("/payments/momo/return")
     public ResponseEntity<Void> handleMomoReturn(@RequestParam Map<String, String> params) {
         String orderId = params.get("orderId");

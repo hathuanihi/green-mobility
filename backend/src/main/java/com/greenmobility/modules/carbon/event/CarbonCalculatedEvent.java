@@ -5,17 +5,13 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
-/**
- * Event published when carbon emission reductions are calculated for a completed trip.
- * Consumed by Sprint 6 (Double-entry Ledger & Incentive Module).
- * Routing key: carbon.event.calculated
- */
 public class CarbonCalculatedEvent implements Serializable {
 
     private UUID tripId;
     private String tripCode;
     private UUID customerId;
     private UUID driverId;
+    private UUID driverUserId;
     private BigDecimal co2SavedGrams;
     private BigDecimal baselineGasolineCo2Grams;
     private BigDecimal evEmittedCo2Grams;
@@ -30,10 +26,19 @@ public class CarbonCalculatedEvent implements Serializable {
                                  BigDecimal co2SavedGrams, BigDecimal baselineGasolineCo2Grams,
                                  BigDecimal evEmittedCo2Grams, BigDecimal carbonCreditsEarned,
                                  Integer loyaltyPointsEarned, String shareableSlug, Instant calculatedAt) {
+        this(tripId, tripCode, customerId, driverId, null, co2SavedGrams, baselineGasolineCo2Grams,
+                evEmittedCo2Grams, carbonCreditsEarned, loyaltyPointsEarned, shareableSlug, calculatedAt);
+    }
+
+    public CarbonCalculatedEvent(UUID tripId, String tripCode, UUID customerId, UUID driverId,
+                                 UUID driverUserId, BigDecimal co2SavedGrams, BigDecimal baselineGasolineCo2Grams,
+                                 BigDecimal evEmittedCo2Grams, BigDecimal carbonCreditsEarned,
+                                 Integer loyaltyPointsEarned, String shareableSlug, Instant calculatedAt) {
         this.tripId = tripId;
         this.tripCode = tripCode;
         this.customerId = customerId;
         this.driverId = driverId;
+        this.driverUserId = driverUserId;
         this.co2SavedGrams = co2SavedGrams;
         this.baselineGasolineCo2Grams = baselineGasolineCo2Grams;
         this.evEmittedCo2Grams = evEmittedCo2Grams;
@@ -43,7 +48,6 @@ public class CarbonCalculatedEvent implements Serializable {
         this.calculatedAt = calculatedAt;
     }
 
-    // Getters and Setters
     public UUID getTripId() { return tripId; }
     public void setTripId(UUID tripId) { this.tripId = tripId; }
 
@@ -55,6 +59,9 @@ public class CarbonCalculatedEvent implements Serializable {
 
     public UUID getDriverId() { return driverId; }
     public void setDriverId(UUID driverId) { this.driverId = driverId; }
+
+    public UUID getDriverUserId() { return driverUserId; }
+    public void setDriverUserId(UUID driverUserId) { this.driverUserId = driverUserId; }
 
     public BigDecimal getCo2SavedGrams() { return co2SavedGrams; }
     public void setCo2SavedGrams(BigDecimal co2SavedGrams) { this.co2SavedGrams = co2SavedGrams; }

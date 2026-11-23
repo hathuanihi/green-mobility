@@ -46,8 +46,9 @@ public class TripController {
     @Operation(summary = "Xem chi tiết chuyến xe", description = "Tra cứu thông tin trạng thái, lộ trình, cước phí và tài xế theo ID chuyến đi")
     @GetMapping("/{tripId}")
     public ResponseEntity<ApiResponse<TripResponseDto>> getTripDetails(
+            @AuthenticationPrincipal UserPrincipal currentUser,
             @PathVariable UUID tripId) {
-        TripResponseDto response = tripService.getTripDetails(tripId);
+        TripResponseDto response = tripService.getTripDetails(tripId, currentUser);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
@@ -58,7 +59,7 @@ public class TripController {
             @PathVariable UUID tripId,
             @RequestBody(required = false) TripCancelRequest request) {
         String reason = request != null ? request.getCancelReason() : "Người dùng hủy chuyến";
-        TripResponseDto response = tripService.cancelTrip(tripId, currentUser.getId(), reason);
+        TripResponseDto response = tripService.cancelTrip(tripId, currentUser.getId(), reason, currentUser);
         return ResponseEntity.ok(ApiResponse.ok("Đã hủy cuốc xe thành công", response));
     }
 
@@ -69,16 +70,18 @@ public class TripController {
     @Operation(summary = "Xem trạng thái tracking thời gian thực của chuyến đi", description = "Khách hàng tra cứu trạng thái tracking (tọa độ tài xế, ETA, phase) từ Redis cache khi reconnect hoặc WebSocket bị gián đoạn")
     @GetMapping("/{tripId}/tracking")
     public ResponseEntity<ApiResponse<TripTrackingDto>> getTripTracking(
+            @AuthenticationPrincipal UserPrincipal currentUser,
             @PathVariable UUID tripId) {
-        TripTrackingDto response = tripService.getTripTrackingState(tripId);
+        TripTrackingDto response = tripService.getTripTrackingState(tripId, currentUser);
         return ResponseEntity.ok(ApiResponse.ok("Lấy trạng thái tracking chuyến xe thành công", response));
     }
 
     @Operation(summary = "Lấy lộ trình định tuyến hiện tại của chuyến đi", description = "Trả về polyline và các bước dẫn đường (turn-by-turn) của giai đoạn hiện tại (đến điểm đón hoặc đến điểm trả)")
     @GetMapping("/{tripId}/route")
     public ResponseEntity<ApiResponse<TripRouteResponseDto>> getTripRoute(
+            @AuthenticationPrincipal UserPrincipal currentUser,
             @PathVariable UUID tripId) {
-        TripRouteResponseDto response = tripService.getTripRoute(tripId);
+        TripRouteResponseDto response = tripService.getTripRoute(tripId, currentUser);
         return ResponseEntity.ok(ApiResponse.ok("Lấy lộ trình chuyến xe thành công", response));
     }
 }

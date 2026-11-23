@@ -24,14 +24,13 @@ public class UserCarbonSummaryDto {
         dto.setTotalCo2SavedKg(safeGrams.divide(BigDecimal.valueOf(1000), 2, RoundingMode.HALF_UP));
         dto.setTotalGreenTrips(totalTrips != null ? totalTrips : 0L);
         dto.setEquivalentTreeDays(safeGrams.divide(BigDecimal.valueOf(60.0), 1, RoundingMode.HALF_UP));
-        dto.setEquivalentLedHours(safeGrams.divide(BigDecimal.valueOf(7.221), 1, RoundingMode.HALF_UP));
+        dto.setEquivalentLedHours(safeGrams.divide(BigDecimal.valueOf(6.187), 1, RoundingMode.HALF_UP));
         dto.setEquivalentSmartphoneCharges(safeGrams.divide(BigDecimal.valueOf(8.22), 0, RoundingMode.HALF_UP));
-        dto.setPersonalCarbonCredits(safeGrams.divide(BigDecimal.valueOf(1000000.0), 4, RoundingMode.HALF_UP));
+        dto.setPersonalCarbonCredits(safeGrams.divide(BigDecimal.valueOf(1000.0), 4, RoundingMode.HALF_UP));
         dto.setTotalEcoPoints(safeGrams.divide(BigDecimal.valueOf(100.0), 0, RoundingMode.FLOOR).intValue());
         return dto;
     }
 
-    // Getters and Setters
     public UUID getUserId() { return userId; }
     public void setUserId(UUID userId) { this.userId = userId; }
 

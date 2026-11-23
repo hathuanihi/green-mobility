@@ -1,13 +1,21 @@
 package com.greenmobility.payment;
 
 import com.greenmobility.common.exception.PaymentBusinessException;
-import com.greenmobility.config.RabbitMQConfig;
-import com.greenmobility.modules.payment.api.PaymentModuleApi;
+import com.greenmobility.common.platform.repository.AuditLogRepository;
+import com.greenmobility.common.platform.repository.PlatformSettingRepository;
+import com.greenmobility.common.platform.service.AuditLogService;
+import com.greenmobility.common.platform.service.OutboxService;
+import com.greenmobility.common.platform.service.PlatformSettingsService;
+import com.greenmobility.modules.ledger.domain.*;
+import com.greenmobility.modules.ledger.repository.LedgerAccountRepository;
+import com.greenmobility.modules.ledger.repository.LedgerEntryRepository;
+import com.greenmobility.modules.ledger.repository.LedgerTransactionRepository;
+import com.greenmobility.modules.ledger.service.LedgerAuditService;
+import com.greenmobility.modules.ledger.service.LedgerService;
 import com.greenmobility.modules.payment.api.PaymentModuleApiImpl;
 import com.greenmobility.modules.payment.domain.*;
 import com.greenmobility.modules.payment.dto.*;
 import com.greenmobility.modules.payment.gateway.*;
-import com.greenmobility.modules.payment.ledger.*;
 import com.greenmobility.modules.payment.repository.*;
 import com.greenmobility.modules.payment.service.*;
 import com.greenmobility.modules.trip.api.TripModuleApi;
@@ -48,6 +56,7 @@ class Sprint5AcceptanceCriteriaTest {
     private EncryptionService encryptionService;
     private AuditLogService auditLogService;
     private OutboxService outboxService;
+    private LedgerAuditService ledgerAuditService;
     private PaymentService paymentService;
     private TopupService topupService;
     private WithdrawalService withdrawalService;
@@ -92,6 +101,16 @@ class Sprint5AcceptanceCriteriaTest {
             String accNum = inv.getArgument(0);
             return Optional.ofNullable(accountByNumberStore.get(accNum));
         });
+        when(ledgerAccountRepository.findByOwnerIdAndAccountTypeAndCurrency(any(), any(), anyString())).thenAnswer(inv -> {
+            UUID ownerId = inv.getArgument(0);
+            AccountType type = inv.getArgument(1);
+            String ccy = inv.getArgument(2);
+            return accountStore.values().stream()
+                    .filter(a -> Objects.equals(ownerId, a.getOwnerId())
+                            && type == a.getAccountType()
+                            && ccy.equalsIgnoreCase(a.getCurrency()))
+                    .findFirst();
+        });
         when(ledgerAccountRepository.findByIdWithLock(any(UUID.class))).thenAnswer(inv -> {
             UUID id = inv.getArgument(0);
             return Optional.ofNullable(accountStore.get(id));
@@ -113,7 +132,7 @@ class Sprint5AcceptanceCriteriaTest {
         });
         when(paymentRepository.findById(any(UUID.class))).thenAnswer(inv -> Optional.ofNullable(paymentStore.get(inv.getArgument(0))));
         when(paymentRepository.findByIdWithLock(any(UUID.class))).thenAnswer(inv -> Optional.ofNullable(paymentStore.get(inv.getArgument(0))));
-        when(paymentRepository.findByTripId(any(UUID.class))).thenAnswer(inv -> {
+        when(paymentRepository.findFirstByTripIdOrderByCreatedAtDesc(any(UUID.class))).thenAnswer(inv -> {
             UUID tId = inv.getArgument(0);
             return paymentStore.values().stream().filter(p -> tId.equals(p.getTripId())).findFirst();
         });
@@ -200,12 +219,13 @@ class Sprint5AcceptanceCriteriaTest {
                 tripModuleApi
         );
 
+        ledgerAuditService = new LedgerAuditService(ledgerEntryRepository, settingsService, auditLogService);
         financeReportService = new FinanceReportService(
                 paymentRepository,
                 ledgerAccountRepository,
-                ledgerTransactionRepository,
-                ledgerEntryRepository,
-                ledgerService
+                ledgerService,
+                ledgerAuditService,
+                null
         );
     }
 
@@ -398,12 +418,14 @@ class Sprint5AcceptanceCriteriaTest {
     @Test
     @DisplayName("AC-09: Financial reconciliation reports balanced system (Total VND == 0)")
     void testAC09_ReconciliationSystemBalanced() {
-        when(ledgerAccountRepository.findAll()).thenReturn(new ArrayList<>(accountStore.values()));
-        when(ledgerTransactionRepository.findAll()).thenReturn(new ArrayList<>(txStore.values()));
-        when(ledgerEntryRepository.calculateBalanceForAccount(any(UUID.class))).thenAnswer(inv -> {
-            UUID id = inv.getArgument(0);
-            return accountStore.get(id).getBalance();
-        });
+        when(ledgerEntryRepository.findUnbalancedTransactionCodes()).thenReturn(List.of());
+        when(ledgerEntryRepository.findCrossCurrencyTransactionCodes()).thenReturn(List.of());
+        when(ledgerEntryRepository.findAccountBalanceDrifts()).thenReturn(List.of());
+        BigDecimal totalVnd = accountStore.values().stream()
+                .filter(a -> "VND".equalsIgnoreCase(a.getCurrency()))
+                .map(LedgerAccount::getBalance)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        when(ledgerEntryRepository.sumBalancesByCurrency()).thenReturn(List.<Object[]>of(new Object[]{"VND", totalVnd}));
 
         AdminFinanceDtos.ReconciliationResponse report = financeReportService.getReconciliation();
         assertTrue(report.isBalanced(), "System must be balanced when sum of accounts equals 0");
@@ -518,7 +540,8 @@ class Sprint5AcceptanceCriteriaTest {
         overduePayment.setStatus("PENDING");
         overduePayment.setCreatedAt(Instant.now().minusSeconds(1800)); // 30 mins ago (> 15m)
 
-        when(paymentRepository.findAll()).thenReturn(List.of(overduePayment));
+        when(paymentRepository.findFirstOutstandingTripId(eq(customerId), any(Instant.class)))
+                .thenReturn(Optional.of(overdueTripId));
 
         PaymentModuleApiImpl paymentApi = new PaymentModuleApiImpl(paymentRepository, ledgerAccountRepository, settingsService);
         assertTrue(paymentApi.hasOutstandingPayment(customerId));

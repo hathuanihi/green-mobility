@@ -134,6 +134,12 @@ public class TripService {
 
     private final com.greenmobility.modules.payment.api.PaymentModuleApi paymentModuleApi;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.greenmobility.common.platform.service.PlatformSettingsService platformSettingsService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.greenmobility.common.platform.service.OutboxService outboxService;
+
     public TripEstimateResponse estimateTrip(TripEstimateRequest request) {
         RoutingService.RouteInfo route = routingService.calculateRoute(
                 request.getPickupLat(), request.getPickupLng(),
@@ -255,10 +261,27 @@ public class TripService {
         return mapToTripResponse(trip);
     }
 
-    @Transactional
-    public TripResponseDto cancelTrip(UUID tripId, UUID userId, String cancelReason) {
+    public TripResponseDto getTripDetails(UUID tripId, com.greenmobility.common.security.UserPrincipal caller) {
         Trip trip = tripRepository.findById(tripId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy chuyến đi với ID: " + tripId));
+        assertTripAccess(trip, caller);
+        return mapToTripResponse(trip);
+    }
+
+    @Transactional
+    public TripResponseDto cancelTrip(UUID tripId, UUID userId, String cancelReason) {
+        return cancelTrip(tripId, userId, cancelReason, null);
+    }
+
+    @Transactional
+    public TripResponseDto cancelTrip(UUID tripId, UUID userId, String cancelReason,
+                                      com.greenmobility.common.security.UserPrincipal caller) {
+        Trip trip = tripRepository.findById(tripId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy chuyến đi với ID: " + tripId));
+
+        if (caller != null) {
+            assertTripAccess(trip, caller);
+        }
 
         if (trip.getStatus() == TripStatus.COMPLETED || trip.getStatus() == TripStatus.CANCELLED) {
             throw new BadRequestException("Chuyến đi đã kết thúc hoặc đã bị hủy trước đó.");
@@ -278,6 +301,32 @@ public class TripService {
         messagingTemplate.convertAndSend("/topic/trip/" + tripId, updateDto);
 
         return mapToTripResponse(savedTrip);
+    }
+
+    private void assertTripAccess(Trip trip, com.greenmobility.common.security.UserPrincipal caller) {
+        if (caller == null) {
+            return;
+        }
+        boolean isStaff = caller.getAuthorities().stream().anyMatch(a -> {
+            String auth = a.getAuthority();
+            return "ROLE_ADMIN".equals(auth) || "ADMIN".equals(auth)
+                    || "ROLE_FINANCE".equals(auth) || "FINANCE".equals(auth)
+                    || "ROLE_OPERATOR".equals(auth) || "OPERATOR".equals(auth);
+        });
+        if (isStaff) {
+            return;
+        }
+        UUID callerId = caller.getId();
+        if (callerId.equals(trip.getCustomerId())) {
+            return;
+        }
+        if (trip.getDriverId() != null) {
+            DriverProfile dp = driverProfileRepository.findById(trip.getDriverId()).orElse(null);
+            if (dp != null && callerId.equals(dp.getUserId())) {
+                return;
+            }
+        }
+        throw new org.springframework.security.access.AccessDeniedException("Bạn không có quyền truy cập chuyến đi này");
     }
 
     @Transactional
@@ -837,10 +886,13 @@ public class TripService {
             }
         }
 
-        // 7. Calculate driver earnings (80% net, 20% platform fee)
-        BigDecimal grossAmount = savedTrip.getFinalAmount();
-        BigDecimal netEarnings = fareCalculationService.calculateDriverIncome(grossAmount);
-        BigDecimal platformFee = grossAmount.subtract(netEarnings);
+        // 7. Calculate driver earnings on gross fare_amount using configured commission rate
+        BigDecimal grossAmount = savedTrip.getFareAmount() != null ? savedTrip.getFareAmount() : savedTrip.getFinalAmount();
+        BigDecimal commissionRate = platformSettingsService != null
+                ? platformSettingsService.getCommissionRate()
+                : new BigDecimal("0.20");
+        BigDecimal platformFee = grossAmount.multiply(commissionRate).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal netEarnings = grossAmount.subtract(platformFee);
 
         // 8. Clean up Redis tracking & restore driver to available GEO pool
         tripTrackingRedisService.deleteTracking(tripId, driverId);
@@ -916,15 +968,25 @@ public class TripService {
                 savedTrip.getCompletedAt()
         );
 
-        try {
-            rabbitTemplate.convertAndSend(
-                    RabbitMQConfig.EXCHANGE_NAME,
+        if (outboxService != null) {
+            outboxService.recordEvent(
+                    "TRIP",
+                    savedTrip.getId().toString(),
                     RabbitMQConfig.ROUTING_KEY_TRIP_COMPLETED,
                     completedEvent
             );
-            log.info("Published TripCompletedEvent to RabbitMQ for trip {}", tripId);
-        } catch (Exception e) {
-            log.warn("Failed to publish TripCompletedEvent to RabbitMQ: {}", e.getMessage());
+            log.info("Recorded TripCompletedEvent to Outbox for trip {}", tripId);
+        } else {
+            try {
+                rabbitTemplate.convertAndSend(
+                        RabbitMQConfig.EXCHANGE_NAME,
+                        RabbitMQConfig.ROUTING_KEY_TRIP_COMPLETED,
+                        completedEvent
+                );
+                log.info("Published TripCompletedEvent to RabbitMQ for trip {}", tripId);
+            } catch (Exception e) {
+                log.warn("Failed to publish TripCompletedEvent to RabbitMQ: {}", e.getMessage());
+            }
         }
 
         log.info("Trip {} completed successfully. Actual dist: {}m, CO2 saved: {}g", tripId, finalDistanceM, co2SavedGrams);
@@ -991,8 +1053,13 @@ public class TripService {
      * Get current trip tracking state (used by Customer REST fallback).
      */
     public TripTrackingDto getTripTrackingState(UUID tripId) {
+        return getTripTrackingState(tripId, null);
+    }
+
+    public TripTrackingDto getTripTrackingState(UUID tripId, com.greenmobility.common.security.UserPrincipal caller) {
         Trip trip = tripRepository.findById(tripId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy chuyến đi với ID: " + tripId));
+        assertTripAccess(trip, caller);
 
         TripTrackingDto dto = new TripTrackingDto();
         dto.setTripId(trip.getId().toString());
@@ -1040,8 +1107,13 @@ public class TripService {
      * Get route polyline and navigation steps for a trip.
      */
     public TripRouteResponseDto getTripRoute(UUID tripId) {
+        return getTripRoute(tripId, null);
+    }
+
+    public TripRouteResponseDto getTripRoute(UUID tripId, com.greenmobility.common.security.UserPrincipal caller) {
         Trip trip = tripRepository.findById(tripId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy chuyến đi với ID: " + tripId));
+        assertTripAccess(trip, caller);
 
         boolean isArriving = trip.getStatus() == TripStatus.MATCHED || trip.getStatus() == TripStatus.DRIVER_ARRIVING;
 

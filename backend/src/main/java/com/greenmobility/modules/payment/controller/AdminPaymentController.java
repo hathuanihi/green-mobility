@@ -1,14 +1,18 @@
 package com.greenmobility.modules.payment.controller;
 
 import com.greenmobility.common.exception.PaymentBusinessException;
+import com.greenmobility.common.platform.service.AuditLogService;
+import com.greenmobility.common.platform.service.IdempotencyService;
+import com.greenmobility.common.platform.service.PlatformSettingsService;
 import com.greenmobility.common.response.ApiResponse;
 import com.greenmobility.common.security.UserPrincipal;
-import com.greenmobility.modules.payment.domain.*;
+import com.greenmobility.modules.ledger.domain.LedgerAccount;
+import com.greenmobility.modules.ledger.repository.LedgerAccountRepository;
+import com.greenmobility.modules.ledger.repository.LedgerEntryRepository;
+import com.greenmobility.modules.payment.domain.Payment;
 import com.greenmobility.modules.payment.dto.*;
 import com.greenmobility.modules.payment.gateway.GatewayQueryResult;
 import com.greenmobility.modules.payment.gateway.PaymentGateway;
-import com.greenmobility.modules.payment.ledger.LedgerAccountRepository;
-import com.greenmobility.modules.payment.ledger.LedgerEntryRepository;
 import com.greenmobility.modules.payment.repository.PaymentRepository;
 import com.greenmobility.modules.payment.repository.PaymentWebhookEventRepository;
 import com.greenmobility.modules.payment.service.*;
@@ -34,7 +38,7 @@ import java.util.UUID;
 @Tag(name = "Admin Financial Operations", description = "APIs for Admin Payment Monitoring, Refunds, Withdrawal Approvals and Reconciliation")
 @RestController
 @RequestMapping("/admin")
-@PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ADMIN', 'ROLE_FINANCE', 'FINANCE')")
+@PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ADMIN', 'ROLE_FINANCE', 'FINANCE', 'ROLE_OPERATOR', 'OPERATOR')")
 public class AdminPaymentController {
 
     private final PaymentRepository paymentRepository;
@@ -47,6 +51,7 @@ public class AdminPaymentController {
     private final LedgerAccountRepository accountRepository;
     private final PaymentWebhookEventRepository webhookEventRepository;
     private final AuditLogService auditLogService;
+    private final IdempotencyService idempotencyService;
 
     public AdminPaymentController(PaymentRepository paymentRepository,
                                   PaymentService paymentService,
@@ -57,7 +62,8 @@ public class AdminPaymentController {
                                   LedgerEntryRepository entryRepository,
                                   LedgerAccountRepository accountRepository,
                                   PaymentWebhookEventRepository webhookEventRepository,
-                                  AuditLogService auditLogService) {
+                                  AuditLogService auditLogService,
+                                  IdempotencyService idempotencyService) {
         this.paymentRepository = paymentRepository;
         this.paymentService = paymentService;
         this.refundService = refundService;
@@ -68,6 +74,7 @@ public class AdminPaymentController {
         this.accountRepository = accountRepository;
         this.webhookEventRepository = webhookEventRepository;
         this.auditLogService = auditLogService;
+        this.idempotencyService = idempotencyService;
     }
 
     @Operation(summary = "Tìm kiếm & Lọc danh sách giao dịch thanh toán")
@@ -150,18 +157,31 @@ public class AdminPaymentController {
 
     @Operation(summary = "Admin thực hiện hoàn tiền cuốc xe (Toàn phần hoặc Một phần)")
     @PostMapping("/payments/{id}/refund")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ADMIN', 'ROLE_FINANCE', 'FINANCE')")
     public ResponseEntity<ApiResponse<Void>> refundPayment(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @PathVariable UUID id,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @RequestBody AdminFinanceDtos.RefundRequest request,
             HttpServletRequest httpReq) {
         String ip = httpReq.getRemoteAddr();
-        refundService.refund(currentUser.getId(), currentUser.getUsername(), id, request, ip);
-        return ResponseEntity.ok(ApiResponse.ok("Hoàn tiền thành công", null));
+        return idempotencyService.executeWithIdempotency(
+                idempotencyKey,
+                currentUser.getId(),
+                "/admin/payments/" + id + "/refund",
+                request,
+                (Class<ApiResponse<Void>>) (Class<?>) ApiResponse.class,
+                true,
+                () -> {
+                    refundService.refund(currentUser.getId(), currentUser.getUsername(), id, request, ip);
+                    return ResponseEntity.ok(ApiResponse.ok("Hoàn tiền thành công", null));
+                }
+        );
     }
 
     @Operation(summary = "Requery trạng thái giao dịch từ cổng thanh toán đối soát")
     @PostMapping("/payments/{id}/requery")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ADMIN', 'ROLE_FINANCE', 'FINANCE')")
     public ResponseEntity<ApiResponse<GatewayQueryResult>> requeryPayment(
             @PathVariable UUID id) {
         Payment payment = paymentRepository.findById(id)
@@ -193,6 +213,7 @@ public class AdminPaymentController {
 
     @Operation(summary = "Phê duyệt yêu cầu rút tiền (Đã chuyển khoản thành công)")
     @PostMapping("/withdrawals/{id}/approve")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ADMIN', 'ROLE_FINANCE', 'FINANCE')")
     public ResponseEntity<ApiResponse<WithdrawalDtos.WithdrawalResponse>> approveWithdrawal(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @PathVariable UUID id,
@@ -207,6 +228,7 @@ public class AdminPaymentController {
 
     @Operation(summary = "Từ chối yêu cầu rút tiền (Hoàn tiền giữ lại về ví thu nhập tài xế)")
     @PostMapping("/withdrawals/{id}/reject")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ADMIN', 'ROLE_FINANCE', 'FINANCE')")
     public ResponseEntity<ApiResponse<WithdrawalDtos.WithdrawalResponse>> rejectWithdrawal(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @PathVariable UUID id,
@@ -241,6 +263,7 @@ public class AdminPaymentController {
 
     @Operation(summary = "Cập nhật tham số tài chính (Tỷ lệ hoa hồng, hạn mức nạp/rút)")
     @PutMapping("/settings/payment")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ADMIN', 'ROLE_FINANCE', 'FINANCE')")
     public ResponseEntity<ApiResponse<Map<String, String>>> updatePaymentSettings(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @RequestBody Map<String, String> updates,

@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +19,7 @@ import java.util.UUID;
 @Tag(name = "4. Admin Emission Factor Management", description = "Quản lý Ma trận Hệ số Phát thải Carbon và Sandbox mô phỏng phát thải")
 @RestController
 @RequestMapping("/admin/emissions")
+@PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_FINANCE', 'ROLE_OPERATOR')")
 public class AdminEmissionFactorController {
 
     private final CarbonCalculationService carbonCalculationService;
@@ -44,6 +46,7 @@ public class AdminEmissionFactorController {
 
     @Operation(summary = "Thêm mới hệ số phát thải", description = "Admin cấu hình hệ số phát thải mới (tự động tính calculated_ev_factor và net_co2_saving_per_km)")
     @PostMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_FINANCE')")
     public ResponseEntity<ApiResponse<EmissionFactorDto>> createEmissionFactor(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @Valid @RequestBody CreateEmissionFactorRequest request) {
@@ -55,6 +58,7 @@ public class AdminEmissionFactorController {
 
     @Operation(summary = "Cập nhật hệ số phát thải", description = "Admin chỉnh sửa các tham số hệ số phát thải")
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_FINANCE')")
     public ResponseEntity<ApiResponse<EmissionFactorDto>> updateEmissionFactor(
             @PathVariable UUID id,
             @RequestBody UpdateEmissionFactorRequest request) {
@@ -64,6 +68,7 @@ public class AdminEmissionFactorController {
 
     @Operation(summary = "Bật/tắt trạng thái hệ số phát thải", description = "Kích hoạt hoặc vô hiệu hóa hệ số phát thải")
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_FINANCE')")
     public ResponseEntity<ApiResponse<Void>> toggleStatus(
             @PathVariable UUID id,
             @RequestParam boolean active) {
