@@ -56,6 +56,9 @@ public class MatchingEngineService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private com.greenmobility.modules.payment.api.PaymentModuleApi paymentModuleApi;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.greenmobility.modules.incentive.api.IncentiveModuleApi incentiveModuleApi;
+
     public MatchingEngineService(DriverGeoRedisRepository driverGeoRepository,
                                  DriverProfileRepository driverProfileRepository,
                                  VehicleRepository vehicleRepository,
@@ -208,6 +211,9 @@ public class MatchingEngineService {
             finalCheck.setCancelledBy("SYSTEM");
             finalCheck.setCancelReason("NO_DRIVER_AVAILABLE");
             tripRepository.save(finalCheck);
+            if (incentiveModuleApi != null && finalCheck.getVoucherRedemptionId() != null) {
+                incentiveModuleApi.releaseVoucherForCancelledTrip(tripId);
+            }
 
             TripStatusUpdateDto cancelDto = new TripStatusUpdateDto();
             cancelDto.setTripId(tripId);

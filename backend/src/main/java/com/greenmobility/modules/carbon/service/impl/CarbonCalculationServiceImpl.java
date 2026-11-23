@@ -417,4 +417,17 @@ public class CarbonCalculationServiceImpl implements CarbonCalculationService, C
         factor.setIsActive(active);
         emissionFactorRepository.save(factor);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<BigDecimal> getReceiptCo2SavedGrams(UUID tripId) {
+        return receiptRepository.findByTripId(tripId).map(TripImpactReceipt::getCo2SavedGrams);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public BigDecimal getCustomerLifetimeCo2SavedGrams(UUID customerId) {
+        BigDecimal total = receiptRepository.sumCo2SavedByCustomerId(customerId);
+        return total != null ? total : BigDecimal.ZERO;
+    }
 }

@@ -140,7 +140,14 @@ public class TripService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private com.greenmobility.common.platform.service.OutboxService outboxService;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.greenmobility.modules.incentive.api.IncentiveModuleApi incentiveModuleApi;
+
     public TripEstimateResponse estimateTrip(TripEstimateRequest request) {
+        return estimateTrip(request, null);
+    }
+
+    public TripEstimateResponse estimateTrip(TripEstimateRequest request, UUID customerId) {
         RoutingService.RouteInfo route = routingService.calculateRoute(
                 request.getPickupLat(), request.getPickupLng(),
                 request.getDropoffLat(), request.getDropoffLng(),
@@ -154,7 +161,7 @@ public class TripService {
         BigDecimal fare = fareCalculationService.calculateFare(request.getVehicleType(), distanceKm, Instant.now());
         CarbonEstimateDto carbon = carbonEstimateService.estimateCarbon(request.getVehicleType(), distanceKm);
 
-        return new TripEstimateResponse(
+        TripEstimateResponse res = new TripEstimateResponse(
                 request.getVehicleType(),
                 route.distanceMeters(),
                 distanceKm,
@@ -164,6 +171,21 @@ public class TripService {
                 carbon,
                 route.polyline()
         );
+
+        boolean hasVoucher = request.getVoucherRedemptionId() != null
+                || (request.getVoucherCode() != null && !request.getVoucherCode().isBlank());
+        if (hasVoucher && customerId != null && incentiveModuleApi != null) {
+            var preview = incentiveModuleApi.previewVoucher(
+                    customerId, request.getVoucherRedemptionId(), request.getVoucherCode(), fare);
+            res.setDiscountAmountVnd(preview.discountAmountVnd());
+            res.setFinalAmountVnd(preview.finalFareVnd());
+            res.setVoucherCode(preview.voucherCode());
+            res.setVoucherTitle(preview.title());
+        } else {
+            res.setDiscountAmountVnd(BigDecimal.ZERO);
+            res.setFinalAmountVnd(fare);
+        }
+        return res;
     }
 
     @Transactional
@@ -220,13 +242,33 @@ public class TripService {
         trip.setEstimatedDistanceM(route.distanceMeters());
         trip.setEstimatedDurationS(route.durationSeconds());
         trip.setFareAmount(fare);
+        trip.setDiscountAmount(BigDecimal.ZERO);
         trip.setFinalAmount(fare);
         trip.setPaymentMethod(request.getPaymentMethod());
         trip.setCo2SavedGrams(carbon.getCo2SavedGrams());
         trip.setRequestedAt(Instant.now());
 
         Trip savedTrip = tripRepository.save(trip);
-        log.info("Created new trip request: ID={}, Code={}", savedTrip.getId(), savedTrip.getTripCode());
+
+        boolean hasVoucher = request.getVoucherRedemptionId() != null
+                || (request.getVoucherCode() != null && !request.getVoucherCode().isBlank());
+        if (hasVoucher && incentiveModuleApi != null) {
+            var reservation = incentiveModuleApi.reserveVoucherForTrip(
+                    customerId,
+                    savedTrip.getId(),
+                    request.getVoucherRedemptionId(),
+                    request.getVoucherCode(),
+                    fare
+            );
+            savedTrip.setVoucherRedemptionId(reservation.voucherRedemptionId());
+            savedTrip.setVoucherCode(reservation.voucherCode());
+            savedTrip.setDiscountAmount(reservation.discountAmountVnd());
+            savedTrip.setFinalAmount(reservation.finalFareVnd());
+            savedTrip = tripRepository.save(savedTrip);
+        }
+
+        log.info("Created new trip request: ID={}, Code={}, discount={}",
+                savedTrip.getId(), savedTrip.getTripCode(), savedTrip.getDiscountAmount());
 
         // Publish to RabbitMQ
         TripRequestedEvent event = new TripRequestedEvent(
@@ -291,6 +333,10 @@ public class TripService {
         trip.setCancelReason(cancelReason != null ? cancelReason : "Khách hàng hủy chuyến");
         trip.setCancelledBy(trip.getCustomerId().equals(userId) ? "CUSTOMER" : "DRIVER");
         Trip savedTrip = tripRepository.save(trip);
+
+        if (incentiveModuleApi != null && savedTrip.getVoucherRedemptionId() != null) {
+            incentiveModuleApi.releaseVoucherForCancelledTrip(tripId);
+        }
 
         // Notify via WebSocket STOMP
         TripStatusUpdateDto updateDto = new TripStatusUpdateDto();
@@ -864,7 +910,15 @@ public class TripService {
         trip.setCo2SavedGrams(co2SavedGrams);
         trip.setStatus(TripStatus.COMPLETED);
         trip.setCompletedAt(completedAt);
+        if (trip.getFareAmount() != null) {
+            BigDecimal disc = trip.getDiscountAmount() != null ? trip.getDiscountAmount() : BigDecimal.ZERO;
+            trip.setFinalAmount(trip.getFareAmount().subtract(disc).max(BigDecimal.ZERO));
+        }
         Trip savedTrip = tripRepository.save(trip);
+
+        if (incentiveModuleApi != null && savedTrip.getVoucherRedemptionId() != null) {
+            incentiveModuleApi.markVoucherUsedForTrip(tripId);
+        }
 
         // 6. Update Driver Profile: total_trips_completed += 1 and total CO2 saved
         DriverProfile driverProfile = driverProfileRepository.findById(driverId).orElse(null);
@@ -1019,6 +1073,10 @@ public class TripService {
         trip.setCancelledBy("DRIVER");
         trip.setCancelReason(reason != null ? reason : "Tài xế hủy cuốc");
         tripRepository.save(trip);
+
+        if (incentiveModuleApi != null && trip.getVoucherRedemptionId() != null) {
+            incentiveModuleApi.releaseVoucherForCancelledTrip(tripId);
+        }
 
         // Clean up Redis & return driver to pool
         tripTrackingRedisService.deleteTracking(tripId, driverId);
@@ -1183,6 +1241,8 @@ public class TripService {
         dto.setFareAmountVnd(trip.getFareAmount());
         dto.setDiscountAmountVnd(trip.getDiscountAmount());
         dto.setFinalAmountVnd(trip.getFinalAmount());
+        dto.setVoucherRedemptionId(trip.getVoucherRedemptionId());
+        dto.setVoucherCode(trip.getVoucherCode());
         dto.setPaymentMethod(trip.getPaymentMethod());
         dto.setPaymentStatus(trip.getPaymentStatus());
 

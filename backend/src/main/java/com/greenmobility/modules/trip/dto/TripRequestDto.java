@@ -41,6 +41,10 @@ public class TripRequestDto {
     @NotNull(message = "Phương thức thanh toán không được để trống")
     private PaymentMethod paymentMethod;
 
+    private java.util.UUID voucherRedemptionId;
+
+    private String voucherCode;
+
     public TripRequestDto() {}
 
     public Double getPickupLat() {
@@ -105,5 +109,21 @@ public class TripRequestDto {
 
     public void setPaymentMethod(PaymentMethod paymentMethod) {
         this.paymentMethod = paymentMethod;
+    }
+
+    public java.util.UUID getVoucherRedemptionId() {
+        return voucherRedemptionId;
+    }
+
+    public void setVoucherRedemptionId(java.util.UUID voucherRedemptionId) {
+        this.voucherRedemptionId = voucherRedemptionId;
+    }
+
+    public String getVoucherCode() {
+        return voucherCode;
+    }
+
+    public void setVoucherCode(String voucherCode) {
+        this.voucherCode = voucherCode;
     }
 }

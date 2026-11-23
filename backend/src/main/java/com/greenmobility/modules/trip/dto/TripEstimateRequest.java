@@ -37,6 +37,10 @@ public class TripEstimateRequest {
     @NotNull(message = "Loại phương tiện không được để trống")
     private VehicleType vehicleType;
 
+    private java.util.UUID voucherRedemptionId;
+
+    private String voucherCode;
+
     public TripEstimateRequest() {}
 
     public Double getPickupLat() {
@@ -93,5 +97,21 @@ public class TripEstimateRequest {
 
     public void setVehicleType(VehicleType vehicleType) {
         this.vehicleType = vehicleType;
+    }
+
+    public java.util.UUID getVoucherRedemptionId() {
+        return voucherRedemptionId;
+    }
+
+    public void setVoucherRedemptionId(java.util.UUID voucherRedemptionId) {
+        this.voucherRedemptionId = voucherRedemptionId;
+    }
+
+    public String getVoucherCode() {
+        return voucherCode;
+    }
+
+    public void setVoucherCode(String voucherCode) {
+        this.voucherCode = voucherCode;
     }
 }

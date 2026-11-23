@@ -28,8 +28,10 @@ public class TripController {
     @Operation(summary = "Dự toán cước phí & lượng CO2 giảm", description = "Tính toán khoảng cách, thời gian, cước phí và lượng phát thải giảm trước khi đặt xe")
     @PostMapping("/estimate")
     public ResponseEntity<ApiResponse<TripEstimateResponse>> estimateTrip(
+            @AuthenticationPrincipal UserPrincipal currentUser,
             @Valid @RequestBody TripEstimateRequest request) {
-        TripEstimateResponse response = tripService.estimateTrip(request);
+        UUID customerId = currentUser != null ? currentUser.getId() : null;
+        TripEstimateResponse response = tripService.estimateTrip(request, customerId);
         return ResponseEntity.ok(ApiResponse.ok("Dự toán lộ trình thành công", response));
     }
 

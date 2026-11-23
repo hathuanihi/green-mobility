@@ -92,6 +92,12 @@ public class Trip {
     @Column(name = "loyalty_points_earned")
     private Integer loyaltyPointsEarned = 0;
 
+    @Column(name = "voucher_redemption_id")
+    private UUID voucherRedemptionId;
+
+    @Column(name = "voucher_code", length = 32)
+    private String voucherCode;
+
     @Column(name = "requested_at")
     private Instant requestedAt = Instant.now();
 
@@ -365,5 +371,21 @@ public class Trip {
 
     public void setCompletedAt(Instant completedAt) {
         this.completedAt = completedAt;
+    }
+
+    public UUID getVoucherRedemptionId() {
+        return voucherRedemptionId;
+    }
+
+    public void setVoucherRedemptionId(UUID voucherRedemptionId) {
+        this.voucherRedemptionId = voucherRedemptionId;
+    }
+
+    public String getVoucherCode() {
+        return voucherCode;
+    }
+
+    public void setVoucherCode(String voucherCode) {
+        this.voucherCode = voucherCode;
     }
 }
